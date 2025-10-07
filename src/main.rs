@@ -38,14 +38,14 @@ impl TarnerMonitor {
         self.selected_process = Some(process.pid);
     }
 
-    fn get_filtered(&self, filter: &str) -> Vec<&ProcessInfo> {
+    fn get_filtered(&self) -> Vec<&ProcessInfo> {
         self.processes
             .iter()
             .filter(|x| {
                 x.name
                     .to_string_lossy()
                     .to_lowercase()
-                    .contains(&filter.to_lowercase())
+                    .contains(&self.seach_str.to_lowercase())
             })
             .collect()
     }
@@ -89,14 +89,17 @@ fn main() {
         sys.cpus().len()
     );
 
+    // populate the processes vector
     for (pid, process) in sys.processes() {
         tarnermonitor.add(ProcessInfo { name: process.name().to_os_string(), parent_pid: process.parent(), pid: *pid, cpu_usage: process.cpu_usage(), memory_usage: process.memory() });
     }
 
-    let search_term = "ope";
-    let mut filtered_processes = tarnermonitor.get_filtered(search_term);
+    // for search test
+    tarnermonitor.seach_str = String::from("ope");
+    let mut filtered_processes = tarnermonitor.get_filtered();
 
-    let filt = Message::SortAlpha;
+    // for filter test
+    let filt = Message::SortCpuA;
     sys.refresh_cpu_all();
     match filt {
         Message::SortAlpha => filtered_processes.sort_by(|a, b| a.name.cmp(&b.name)),
