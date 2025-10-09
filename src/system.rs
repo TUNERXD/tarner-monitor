@@ -1,5 +1,5 @@
 use crate::process::ProcessInfo;
-use sysinfo::{System};
+use sysinfo::{Pid, System};
 
 pub struct SystemManager {
     system: System,
@@ -23,6 +23,10 @@ impl SystemManager {
 
     }
 
+    pub fn refresh(&mut self) {
+        self.system.refresh_all();
+    }
+
     pub fn get_processes (&self) -> Vec<ProcessInfo> {
 
         self.system.processes().iter().map(|(pid, process)| {
@@ -42,5 +46,13 @@ impl SystemManager {
 
     pub fn cpu_count(&self) -> usize {
         self.system.cpus().len()
+    }
+
+    pub fn kill_process(&mut self, pid: Pid) -> bool {
+        if let Some(process) = self.system.process(pid) {
+            process.kill()
+        } else {
+            false
+        }
     }
 }

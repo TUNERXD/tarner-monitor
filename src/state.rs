@@ -1,34 +1,31 @@
 use crate::process::ProcessInfo;
 use crate::system::SystemManager;
-use iced::{Application, Command, Settings};
+use iced::{Application, Command, Theme}; 
 use sysinfo::Pid;
-use std::io::{self, Write};
 
 pub struct TarnerMonitor {
     pub processes: Vec<ProcessInfo>,
     pub selected_process: Option<Pid>,
-    pub seach_str: String,
+    pub search_str: String,  
     pub total_memory: u64,
     pub cpu_len: usize,
-    system_manager: SystemManager,
+    system_manager: SystemManager,  
 }
 
 #[derive(Debug, Clone)]
-pub enum Message{
-    // ProcessSelected(Pid),
-    // SearchChanged(String),
-    // KillProcess,
-    // RefreshProcesses,
+pub enum Message {
+    ProcessSelected(Pid),     
+    SearchChanged(String),     
+    KillProcess,             
+    RefreshProcesses,         
     SortAlpha,
     SortCpuA,
     SortCpuD,
     SortMemA,
     SortMemD,
-    Test,
 }
 
 impl TarnerMonitor {
-
     pub fn new() -> Self {
         let system_manager = SystemManager::new();
         let processes = system_manager.get_processes();
@@ -36,28 +33,50 @@ impl TarnerMonitor {
         TarnerMonitor {
             processes,
             selected_process: None,
-            seach_str: String::new(),
+            search_str: String::new(),
             total_memory: system_manager.total_memory(),
             cpu_len: system_manager.cpu_count(),
             system_manager,
         }
     }
 
-    // pub fn select_process(&mut self, process: ProcessInfo) {
-    //     self.selected_process = Some(process.pid);
-    // }
-
     pub fn get_filtered(&self) -> Vec<&ProcessInfo> {
-        self.processes.iter().filter(|x| {
-                x.name.to_string_lossy().to_lowercase().contains(&self.seach_str.to_lowercase())
+        self.processes
+            .iter()
+            .filter(|x| {
+                if self.search_str.is_empty() {
+                    true
+                } else {
+                    x.name
+                        .to_string_lossy()
+                        .to_lowercase()
+                        .contains(&self.search_str.to_lowercase())
+                }
             })
             .collect()
     }
 
+    pub fn refresh_processes(&mut self) {
+        self.system_manager.refresh();
+        self.processes = self.system_manager.get_processes();
+        self.cpu_len = self.system_manager.cpu_count();
+        self.total_memory = self.system_manager.total_memory();
+    }
+
+    pub fn kill_selected(&mut self) -> bool {
+        if let Some(pid) = self.selected_process {
+            let success = self.system_manager.kill_process(pid);
+            if success {
+                self.selected_process = None;
+            }
+            success
+        } else {
+            false
+        }
+    }
 }
 
 impl Application for TarnerMonitor {
-
     type Executor = iced::executor::Default;
     type Message = Message;
     type Theme = iced::Theme;
@@ -73,17 +92,45 @@ impl Application for TarnerMonitor {
 
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
-            Message::SortAlpha => self.processes.sort_by(|a, b| a.name.cmp(&b.name)),
-            Message::SortCpuA => self.processes.sort_by(|a, b| a.cpu_usage.partial_cmp(&b.cpu_usage).unwrap_or(std::cmp::Ordering::Equal)),
-            Message::SortMemA => self.processes.sort_by(|a, b| a.memory_usage.cmp(&b.memory_usage)),
-            Message::SortCpuD => self.processes.sort_by(|a, b| b.cpu_usage.partial_cmp(&a.cpu_usage).unwrap_or(std::cmp::Ordering::Equal)),
-            Message::SortMemD => self.processes.sort_by(|a, b| b.memory_usage.cmp(&a.memory_usage)),
-            _ => { 
-                for process in &self.processes {
-                    println!("{:?}, CPU: {:.3}%, Memory: {:.3}%", process.name, process.cpu_usage / self.cpu_len as f32, (process.memory_usage as f64 / self.total_memory as f64) * 100.0)
+            Message::ProcessSelected(pid) => {
+                self.selected_process = Some(pid);
+            }
+            Message::SearchChanged(search) => {
+                self.search_str = search;
+            }
+            Message::KillProcess => {
+                if self.kill_selected() {
+                    self.refresh_processes();
                 }
-                io::stdout().flush().expect("Failed to flush")
-            },
+            }
+            Message::RefreshProcesses => {
+                self.refresh_processes();
+            }
+            Message::SortAlpha => {
+                self.processes.sort_by(|a, b| a.name.cmp(&b.name));
+            }
+            Message::SortCpuA => {
+                self.processes.sort_by(|a, b| {
+                    a.cpu_usage
+                        .partial_cmp(&b.cpu_usage)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                });
+            }
+            Message::SortCpuD => {
+                self.processes.sort_by(|a, b| {
+                    b.cpu_usage
+                        .partial_cmp(&a.cpu_usage)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                });
+            }
+            Message::SortMemA => {
+                self.processes
+                    .sort_by(|a, b| a.memory_usage.cmp(&b.memory_usage));
+            }
+            Message::SortMemD => {
+                self.processes
+                    .sort_by(|a, b| b.memory_usage.cmp(&a.memory_usage));
+            }
         }
         Command::none()
     }
