@@ -2,6 +2,11 @@ use crate::state::{Message, TarnerMonitor};
 use iced::widget::{button, column, container, row, scrollable, text, text_input, Column};
 use iced::{Element, Length};
 
+// TODO: Subscription 3 second auto refresh interval
+// TODO: Confirm when Kill process
+// TODO: Another window for Computer Detail
+// TODO: Process Detail below
+
 pub fn view(state: &TarnerMonitor) -> Element<'_, Message> {
     let search_input = text_input("Search processes...", &state.search_str)
         .on_input(Message::SearchChanged)
@@ -9,6 +14,10 @@ pub fn view(state: &TarnerMonitor) -> Element<'_, Message> {
 
     let refresh_button = button("Refresh").on_press(Message::RefreshProcesses);
     let kill_button = button("Kill Selected")
+        .on_press(Message::KillProcess)
+        .style(iced::theme::Button::Destructive);
+    
+    let end_task = button("End Task")
         .on_press(Message::KillProcess)
         .style(iced::theme::Button::Destructive);
 
@@ -21,7 +30,7 @@ pub fn view(state: &TarnerMonitor) -> Element<'_, Message> {
     ]
     .spacing(5);
 
-    let controls = row![search_input, refresh_button, kill_button, sort_buttons]
+    let controls = row![search_input, refresh_button, kill_button, end_task, sort_buttons]
         .spacing(10)
         .padding(10);
 
@@ -34,11 +43,11 @@ pub fn view(state: &TarnerMonitor) -> Element<'_, Message> {
     .spacing(10)
     .padding(10);
 
-    let filtered = state.get_filtered();  // ✅ Use 'state' not 'self'
+    let filtered = state.get_filtered();
     let mut process_list = Column::new().spacing(2);
 
     for process in filtered {
-        let cpu_percent = process.cpu_usage / state.cpu_len as f32;  // ✅ Use 'state' not 'self'
+        let cpu_percent = process.cpu_usage / state.cpu_len as f32;
         let mem_percent = (process.memory_usage as f64 / state.total_memory as f64) * 100.0;
 
         let is_selected = state.selected_process == Some(process.pid);
