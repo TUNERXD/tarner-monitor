@@ -1,6 +1,7 @@
 use crate::process::ProcessInfo;
 use crate::system::SystemManager;
-use iced::{Application, Command, Theme}; 
+use iced::{Application, Command, Theme, time, Subscription}; 
+use std::time::Duration;
 use sysinfo::Pid;
 
 pub struct TarnerMonitor {
@@ -23,6 +24,7 @@ pub enum Message {
     SortCpuD,
     SortMemA,
     SortMemD,
+    RefreshTick(time::Instant),
 }
 
 impl TarnerMonitor {
@@ -69,11 +71,11 @@ impl TarnerMonitor {
             if success {
                 self.selected_process = None;
             }
-            self.system_manager.refresh();
+            self.refresh_processes();
             success
         }
         else {
-            self.system_manager.refresh();
+           self.refresh_processes();
             false
         }
     }
@@ -85,16 +87,16 @@ impl TarnerMonitor {
                 if success {
                     self.selected_process = None;
                 }
-                self.system_manager.refresh();
+                self.refresh_processes();
                 success
             }
             else {
-                self.system_manager.refresh();
+                self.refresh_processes();
                 false
             }
         }
         else {
-            self.system_manager.refresh();
+            self.refresh_processes();
                 false
         }
     }
@@ -155,11 +157,19 @@ impl Application for TarnerMonitor {
                 self.processes
                     .sort_by(|a, b| b.memory_usage.cmp(&a.memory_usage));
             }
+            Message::RefreshTick(_instant) => {
+                self.refresh_processes();
+            }
         }
         Command::none()
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message, Self::Theme, iced::Renderer> {
         crate::view::view(self)
+    }
+
+    fn subscription(&self) -> Subscription<Message> {
+        iced::time::every(Duration::from_secs(1))
+            .map(Message::RefreshTick)
     }
 }
