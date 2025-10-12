@@ -2,7 +2,7 @@ use crate::process::ProcessInfo;
 use sysinfo::{Pid, System};
 
 pub struct SystemManager {
-    system: System,
+    pub system: System,
 }
 
 impl SystemManager {
