@@ -13,7 +13,6 @@ pub fn view(state: &TarnerMonitor) -> Element<'_, Message> {
         .on_input(Message::SearchChanged)
         .padding(10);
 
-    let refresh_button = button("Refresh").on_press(Message::RefreshProcesses);
     let end_task_button = button("End Task")
         .on_press(Message::KillProcess)
         .style(iced::theme::Button::Destructive);
@@ -25,7 +24,7 @@ pub fn view(state: &TarnerMonitor) -> Element<'_, Message> {
     ]
     .spacing(5);
 
-    let controls = row![search_input, refresh_button, end_task_button, sort_buttons]
+    let controls = row![search_input, end_task_button, sort_buttons]
         .spacing(10)
         .padding(10);
 

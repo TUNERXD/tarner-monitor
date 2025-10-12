@@ -28,8 +28,7 @@ pub enum SortBy {
 pub enum Message {
     ProcessSelected(Pid),     
     SearchChanged(String),     
-    KillProcess,
-    RefreshProcesses,         
+    KillProcess,        
     SortAlpha,
     SortCpu,
     SortMem,
@@ -156,9 +155,6 @@ impl Application for TarnerMonitor {
             },
             Message::KillProcess => {
                 self.kill_selected_parent();
-            },
-            Message::RefreshProcesses => {
-                self.refresh_processes();
             },
             Message::SortAlpha => {
                 if self.current_sort == SortBy::AlphaAsc {
