@@ -2,7 +2,6 @@ use crate::state::{Message, TarnerMonitor, AppTheme};
 use iced::widget::{button, column, container, row, scrollable, text, text_input, Column};
 use iced::{Element, Length, Theme};
 
-// TODO: Refractor Code -> Selected Process: Option<ProcessInfo>
 // TODO: Process Detail below
 // TODO: Another window for Computer Detail
 // TODO: Confirm when Kill process
