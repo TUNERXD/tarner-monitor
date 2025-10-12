@@ -10,14 +10,24 @@ pub struct TarnerMonitor {
     pub search_str: String,  
     pub total_memory: u64,
     pub cpu_len: usize,
-    system_manager: SystemManager,  
+    system_manager: SystemManager,
+    current_sort: SortBy,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum SortBy {
+    Name,
+    CpuAsc,
+    CpuDesc,
+    MemAsc,
+    MemDesc,
 }
 
 #[derive(Debug, Clone)]
 pub enum Message {
     ProcessSelected(Pid),     
     SearchChanged(String),     
-    KillProcess,             
+    KillProcess,
     RefreshProcesses,         
     SortAlpha,
     SortCpuA,
@@ -39,6 +49,7 @@ impl TarnerMonitor {
             total_memory: system_manager.total_memory(),
             cpu_len: system_manager.cpu_count(),
             system_manager,
+            current_sort: SortBy::Name,
         }
     }
 
@@ -65,6 +76,38 @@ impl TarnerMonitor {
         self.total_memory = self.system_manager.total_memory();
     }
 
+    // Sorting Processes
+    fn apply_sort(&mut self) {
+        match self.current_sort {
+            SortBy::Name => {
+                self.processes.sort_by(|a, b| a.name.cmp(&b.name));
+            }
+            SortBy::CpuAsc => {
+                self.processes.sort_by(|a, b| {
+                    a.cpu_usage
+                        .partial_cmp(&b.cpu_usage)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                });
+            }
+            SortBy::CpuDesc => {
+                self.processes.sort_by(|a, b| {
+                    b.cpu_usage
+                        .partial_cmp(&a.cpu_usage)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                });
+            }
+            SortBy::MemAsc => {
+                self.processes
+                    .sort_by(|a, b| a.memory_usage.cmp(&b.memory_usage));
+            }
+            SortBy::MemDesc => {
+                self.processes
+                    .sort_by(|a, b| b.memory_usage.cmp(&a.memory_usage));
+            }
+        }
+    }
+
+    // Kill an Instance
     pub fn kill_selected(&mut self) -> bool {
         if let Some(pid) = self.selected_process {
             let success = self.system_manager.kill_process(pid);
@@ -80,6 +123,7 @@ impl TarnerMonitor {
         }
     }
 
+    // Kill the parent of the instance
     pub fn kill_selected_parent(&mut self) -> bool {
         if let Some(process,) = self.system_manager.system.process(self.selected_process.unwrap()) {
             if let Some(parent_pid) = process.parent() {
@@ -125,40 +169,34 @@ impl Application for TarnerMonitor {
                 self.search_str = search;
             }
             Message::KillProcess => {
-                if self.kill_selected_parent() {
-                    self.refresh_processes();
-                }
+                self.kill_selected_parent();
             }
             Message::RefreshProcesses => {
                 self.refresh_processes();
             }
             Message::SortAlpha => {
-                self.processes.sort_by(|a, b| a.name.cmp(&b.name));
+                self.current_sort = SortBy::Name;
+                self.apply_sort();
             }
             Message::SortCpuA => {
-                self.processes.sort_by(|a, b| {
-                    a.cpu_usage
-                        .partial_cmp(&b.cpu_usage)
-                        .unwrap_or(std::cmp::Ordering::Equal)
-                });
+                self.current_sort = SortBy::CpuAsc;
+                self.apply_sort();
             }
             Message::SortCpuD => {
-                self.processes.sort_by(|a, b| {
-                    b.cpu_usage
-                        .partial_cmp(&a.cpu_usage)
-                        .unwrap_or(std::cmp::Ordering::Equal)
-                });
+                self.current_sort = SortBy::CpuDesc;
+                self.apply_sort();
             }
             Message::SortMemA => {
-                self.processes
-                    .sort_by(|a, b| a.memory_usage.cmp(&b.memory_usage));
+                self.current_sort = SortBy::MemAsc;
+                self.apply_sort();
             }
             Message::SortMemD => {
-                self.processes
-                    .sort_by(|a, b| b.memory_usage.cmp(&a.memory_usage));
+                self.current_sort = SortBy::MemDesc;
+                self.apply_sort();
             }
             Message::RefreshTick(_instant) => {
                 self.refresh_processes();
+                self.apply_sort();
             }
         }
         Command::none()

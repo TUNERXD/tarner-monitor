@@ -2,7 +2,6 @@ use crate::state::{Message, TarnerMonitor};
 use iced::widget::{button, column, container, row, scrollable, text, text_input, Column};
 use iced::{Element, Length};
 
-// TODO: Subscription 3 second auto refresh interval
 // TODO: Confirm when Kill process
 // TODO: Another window for Computer Detail
 // TODO: Process Detail below
