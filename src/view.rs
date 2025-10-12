@@ -3,8 +3,10 @@ use iced::widget::{button, column, container, row, scrollable, text, text_input,
 use iced::{Element, Length};
 
 // TODO: Confirm when Kill process
-// TODO: Another window for Computer Detail
+// TODO: Save User Theme, Default Sort Preference
 // TODO: Process Detail below
+// TODO: Another window for Computer Detail
+// TODO: Export Processes to CSV
 
 pub fn view(state: &TarnerMonitor) -> Element<'_, Message> {
     let search_input = text_input("Search processes...", &state.search_str)
@@ -12,24 +14,18 @@ pub fn view(state: &TarnerMonitor) -> Element<'_, Message> {
         .padding(10);
 
     let refresh_button = button("Refresh").on_press(Message::RefreshProcesses);
-    let kill_button = button("Kill Selected")
-        .on_press(Message::KillProcess)
-        .style(iced::theme::Button::Destructive);
-    
-    let end_task = button("End Task")
+    let end_task_button = button("End Task")
         .on_press(Message::KillProcess)
         .style(iced::theme::Button::Destructive);
 
     let sort_buttons = row![
         button("Name ↕").on_press(Message::SortAlpha),
-        button("CPU ↑").on_press(Message::SortCpuA),
-        button("CPU ↓").on_press(Message::SortCpuD),
-        button("Mem ↑").on_press(Message::SortMemA),
-        button("Mem ↓").on_press(Message::SortMemD),
+        button("CPU ↕").on_press(Message::SortCpu),
+        button("Mem ↕").on_press(Message::SortMem),
     ]
     .spacing(5);
 
-    let controls = row![search_input, refresh_button, kill_button, end_task, sort_buttons]
+    let controls = row![search_input, refresh_button, end_task_button, sort_buttons]
         .spacing(10)
         .padding(10);
 
