@@ -46,6 +46,31 @@ pub fn view<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a, Message>
     .spacing(10)
     .padding(10);
 
+    let details_pane = column![
+        row![
+            text("Process Name").width(Length::FillPortion(1)),
+            text("Name").width(Length::FillPortion(1)),
+            text("Parent Pid").width(Length::FillPortion(1)),
+            text("Pid").width(Length::FillPortion(1)),
+        ],
+        row![
+            text("Cpu%").width(Length::FillPortion(1)),
+            text("Cpu%").width(Length::FillPortion(1)),
+        ],
+        row![
+            text("Memory Usage").width(Length::FillPortion(1)),
+            text("Memory Usage").width(Length::FillPortion(1)),
+        ],
+        row![
+            text("Disc Usage").width(Length::FillPortion(1)),
+            text("Discs").width(Length::FillPortion(1)),
+        ],
+        row![
+            text("Network Usage").width(Length::FillPortion(1)),
+            text("Network").width(Length::FillPortion(1)),
+        ],
+    ];
+
     let filtered = state.get_filtered();
     let mut process_list = Column::new().spacing(2);
 
