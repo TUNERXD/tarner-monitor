@@ -69,9 +69,33 @@ impl TarnerMonitor {
             if success {
                 self.selected_process = None;
             }
+            self.system_manager.refresh();
             success
-        } else {
+        }
+        else {
+            self.system_manager.refresh();
             false
+        }
+    }
+
+    pub fn kill_selected_parent(&mut self) -> bool {
+        if let Some(process,) = self.system_manager.system.process(self.selected_process.unwrap()) {
+            if let Some(parent_pid) = process.parent() {
+                let success = self.system_manager.kill_process(parent_pid);
+                if success {
+                    self.selected_process = None;
+                }
+                self.system_manager.refresh();
+                success
+            }
+            else {
+                self.system_manager.refresh();
+                false
+            }
+        }
+        else {
+            self.system_manager.refresh();
+                false
         }
     }
 }
@@ -99,7 +123,7 @@ impl Application for TarnerMonitor {
                 self.search_str = search;
             }
             Message::KillProcess => {
-                if self.kill_selected() {
+                if self.kill_selected_parent() {
                     self.refresh_processes();
                 }
             }
