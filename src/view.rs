@@ -1,14 +1,13 @@
-use crate::state::{Message, TarnerMonitor};
+use crate::state::{Message, TarnerMonitor, AppTheme};
 use iced::widget::{button, column, container, row, scrollable, text, text_input, Column};
-use iced::{Element, Length};
+use iced::{Element, Length, Theme};
 
 // TODO: Confirm when Kill process
-// TODO: Save User Theme, Default Sort Preference
 // TODO: Process Detail below
 // TODO: Another window for Computer Detail
 // TODO: Export Processes to CSV
 
-pub fn view(state: &TarnerMonitor) -> Element<'_, Message> {
+pub fn view<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a, Message> {
     let search_input = text_input("Search processes...", &state.search_str)
         .on_input(Message::SearchChanged)
         .padding(10);
@@ -24,7 +23,17 @@ pub fn view(state: &TarnerMonitor) -> Element<'_, Message> {
     ]
     .spacing(5);
 
-    let controls = row![search_input, end_task_button, sort_buttons]
+    let theme_text = match state.theme {
+        AppTheme::Light => "🌙 Dark Mode",
+        AppTheme::Dark => "☀️ Light Mode",
+    };
+
+    let theme_toggle = button(theme_text)
+        .on_press(Message::ToggleTheme)
+        .style(iced::theme::Button::Secondary);
+
+
+    let controls = row![search_input, end_task_button, sort_buttons, theme_toggle]
         .spacing(10)
         .padding(10);
 
