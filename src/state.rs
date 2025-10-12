@@ -7,17 +7,6 @@ use serde::{Serialize, Deserialize};
 use std::{fs, io};
 use std::path::PathBuf;
 
-pub struct TarnerMonitor {
-    pub processes: Vec<ProcessInfo>,
-    pub selected_process: Option<Pid>,
-    pub search_str: String,  
-    pub total_memory: u64,
-    pub cpu_len: usize,
-    system_manager: SystemManager,
-    current_sort: SortBy,
-    pub theme: AppTheme,
-}
-
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum AppTheme {
     Light,
@@ -114,6 +103,16 @@ pub enum Message {
     RefreshTick(time::Instant),
     ToggleTheme,
 }
+pub struct TarnerMonitor {
+    pub processes: Vec<ProcessInfo>,
+    pub selected_process: Option<ProcessInfo>,
+    pub search_str: String,  
+    pub total_memory: u64,
+    pub cpu_len: usize,
+    system_manager: SystemManager,
+    current_sort: SortBy,
+    pub theme: AppTheme,
+}
 
 impl TarnerMonitor {
     pub fn new() -> Self {
@@ -158,6 +157,14 @@ impl TarnerMonitor {
         self.processes = self.system_manager.get_processes();
         self.cpu_len = self.system_manager.cpu_count();
         self.total_memory = self.system_manager.total_memory();
+
+        if let Some(selected_proc) = &self.selected_process {
+            let pid = selected_proc.pid;
+            self.selected_process = self.processes
+                .iter()
+                .find(|p| p.pid == pid)
+                .cloned();
+        }
     }
 
     // Sorting Processes
@@ -196,24 +203,27 @@ impl TarnerMonitor {
 
     // Kill the parent of the instance
     pub fn kill_selected_parent(&mut self) -> bool {
-        if let Some(process,) = self.system_manager.system.process(self.selected_process.unwrap()) {
-            if let Some(parent_pid) = process.parent() {
-                let success = self.system_manager.kill_process(parent_pid);
-                if success {
-                    self.selected_process = None;
+
+        let target_pid = self.selected_process.as_ref().map(|p| p.pid);
+
+        if let Some(pid) = target_pid {
+            // get parent pid
+            if let Some(process) = self.system_manager.system.process(pid) {
+                if let Some(parent_pid) = process.parent() {
+                    let success = self.system_manager.kill_process(parent_pid);
+                    if success {
+                        self.selected_process = None;
+                    }
+                    self.refresh_processes();
+                    self.apply_sort();
+                    return success;
                 }
-                self.refresh_processes();
-                success
-            }
-            else {
-                self.refresh_processes();
-                false
             }
         }
-        else {
-            self.refresh_processes();
-                false
-        }
+
+        self.refresh_processes();
+        self.apply_sort();
+        false
     }
 
     pub fn run_with_settings() -> iced::Result {
@@ -244,7 +254,10 @@ impl Application for TarnerMonitor {
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
             Message::ProcessSelected(pid) => {
-                self.selected_process = Some(pid);
+                self.selected_process = self.processes
+                    .iter()
+                    .find(|p| p.pid == pid)
+                    .cloned()
             },
             Message::SearchChanged(search) => {
                 self.search_str = search;

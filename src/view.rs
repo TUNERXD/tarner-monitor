@@ -2,9 +2,10 @@ use crate::state::{Message, TarnerMonitor, AppTheme};
 use iced::widget::{button, column, container, row, scrollable, text, text_input, Column};
 use iced::{Element, Length, Theme};
 
-// TODO: Confirm when Kill process
+// TODO: Refractor Code -> Selected Process: Option<ProcessInfo>
 // TODO: Process Detail below
 // TODO: Another window for Computer Detail
+// TODO: Confirm when Kill process
 // TODO: Export Processes to CSV
 
 pub fn view<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a, Message> {
@@ -24,8 +25,8 @@ pub fn view<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a, Message>
     .spacing(5);
 
     let theme_text = match state.theme {
-        AppTheme::Light => "🌙 Dark Mode",
-        AppTheme::Dark => "☀️ Light Mode",
+        AppTheme::Light => "Dark Mode",
+        AppTheme::Dark => "Light Mode",
     };
 
     let theme_toggle = button(theme_text)
@@ -78,7 +79,7 @@ pub fn view<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a, Message>
         let cpu_percent = process.cpu_usage / state.cpu_len as f32;
         let mem_percent = (process.memory_usage as f64 / state.total_memory as f64) * 100.0;
 
-        let is_selected = state.selected_process == Some(process.pid);
+        let is_selected = state.selected_process.as_ref().map(|p| p.pid) == Some(process.pid);
 
         let process_row = button(
             row![
@@ -105,6 +106,7 @@ pub fn view<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a, Message>
         controls,
         header,
         scrollable(process_list).height(Length::Fill),
+        details_pane,
     ]
     .spacing(10);
 
