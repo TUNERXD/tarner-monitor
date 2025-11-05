@@ -36,6 +36,10 @@ impl SystemManager {
                 *pid,
                 process.cpu_usage(),
                 process.memory(),
+                process.run_time(),
+                process.status(),
+                process.accumulated_cpu_time(),
+                process.disk_usage(),
             )
         }).collect() 
     }
