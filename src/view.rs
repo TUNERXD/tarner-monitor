@@ -1,12 +1,50 @@
-use crate::state::{Message, TarnerMonitor, AppTheme};
+use crate::state::{Message, TarnerMonitor, AppTheme, Tab};
 use iced::widget::{button, column, container, row, scrollable, text, text_input, Column};
 use iced::{Element, Length, Theme};
 
-// TODO: Another window for Computer Detail
 // TODO: Confirm when Kill process
 // TODO: Export Processes to CSV
 
 pub fn view<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a, Message> {
+    let tab_buttons = row![
+        button("Processes")
+            .on_press(Message::TabSelected(Tab::Processes))
+            .style(if state.active_tab == Tab::Processes {
+                iced::theme::Button::Primary
+            } else {
+                iced::theme::Button::Secondary
+            }),
+        button("System")
+            .on_press(Message::TabSelected(Tab::System))
+            .style(if state.active_tab == Tab::System {
+                iced::theme::Button::Primary
+            } else {
+                iced::theme::Button::Secondary
+            })
+    ]
+    .spacing(5);
+
+    // Choose content based on the active tab
+    let tab_content = match state.active_tab {
+        Tab::Processes => view_processes(state, _theme),
+        Tab::System => view_system(state),
+    };
+
+    // Combine tabs and content
+    let content = column![
+        tab_buttons,
+        tab_content,
+    ]
+    .spacing(10);
+
+    container(content)
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .padding(10)
+        .into()
+}
+
+pub fn view_processes<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a, Message> {
     let search_input = text_input("Search processes...", &state.search_str)
         .on_input(Message::SearchChanged)
         .padding(10);
@@ -47,8 +85,8 @@ pub fn view<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a, Message>
 
     let details_pane: Element<'a, Message> = if let Some(process) = &state.selected_process {
         // Calculate percentages using state totals
-        let cpu_percent = process.cpu_usage / state.cpu_len as f32;
-        let mem_percent = (process.memory_usage as f64 / state.total_memory as f64) * 100.0;
+        let cpu_percent = process.cpu_usage / state.system_manager.cpu_cores as f32;
+        let mem_percent = (process.memory_usage as f64 / state.system_manager.total_memory as f64) * 100.0;
         let parent_pid_str = process.parent_pid.map_or_else(
             || "N/A".to_string(), // Handle processes with no parent
             |pid| pid.as_u32().to_string()
@@ -109,8 +147,8 @@ pub fn view<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a, Message>
     let mut process_list = Column::new().spacing(2);
 
     for process in filtered {
-        let cpu_percent = process.cpu_usage / state.cpu_len as f32;
-        let mem_percent = (process.memory_usage as f64 / state.total_memory as f64) * 100.0;
+        let cpu_percent = process.cpu_usage / state.system_manager.cpu_cores as f32;
+        let mem_percent = (process.memory_usage as f64 / state.system_manager.total_memory as f64) * 100.0;
 
         let is_selected = state.selected_process.as_ref().map(|p| p.pid) == Some(process.pid);
 
@@ -148,4 +186,50 @@ pub fn view<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a, Message>
         .height(Length::Fill)
         .padding(10)
         .into()
+}
+
+
+fn view_system<'a>(state: &'a TarnerMonitor) -> Element<'a, Message> {
+    
+    // Helper to create styled rows
+    let detail_row = |label: &str, value: String| {
+        row![
+            text(label).width(Length::Fixed(150.0)), // Fixed label width for alignment
+            text(value),
+        ]
+        .spacing(10)
+        .padding(2)
+    };
+
+    // Get system info from the system_manager
+    // We call this on every view, but sysinfo caches it, so it's fast.
+    let sys = &state.system_manager.system;
+    
+    let os_name = state.system_manager.os_name.to_string();
+    let os_version = state.system_manager.os_version.to_string();
+    let kernel = state.system_manager.kernel_version.to_string();
+    let hostname = state.system_manager.hostname.to_string();
+    let cpu_brand = state.system_manager.cpu_brand.to_string();
+    let cpu_cores = state.system_manager.cpu_cores.to_string();
+    
+    // Convert memory from bytes to Megabytes (MB) for readability
+    let total_mem_mb = state.system_manager.total_memory / 1024 / 1024;
+    let used_mem_mb = sys.used_memory() / 1024 / 1024;
+
+    let content = column![
+        text("System Information").size(24),
+        detail_row("OS:", os_name),
+        detail_row("OS Version:", os_version),
+        detail_row("Kernel Version:", kernel),
+        detail_row("Hostname:", hostname),
+        detail_row("CPU:", cpu_brand),
+        detail_row("Logical Cores:", cpu_cores),
+        detail_row("Total Memory:", format!("{} MB", total_mem_mb)),
+        detail_row("Used Memory:", format!("{} MB", used_mem_mb)),
+    ]
+    .spacing(10)
+    .padding(10);
+
+    // Return as a scrollable container
+    scrollable(content).height(Length::Fill).into()
 }
