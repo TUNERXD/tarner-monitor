@@ -60,7 +60,7 @@ pub fn view<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a, Message>
         let detail_row = |label: &str, value: String| {
             row![
                 text(label).width(Length::FillPortion(1)),
-                text(value).width(Length::FillPortion(3)),
+                text(value).width(Length::FillPortion(1)),
             ]
             .spacing(10)
             .padding(2)
@@ -71,22 +71,32 @@ pub fn view<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a, Message>
             text("Process Details").size(20),
             row![
                 text("Name: ").width(Length::FillPortion(1)),
-                text(process.name.to_string_lossy().to_string()).width(Length::FillPortion(7)),
+                text(process.name.to_string_lossy().to_string()).width(Length::FillPortion(3)),
             ]
             .spacing(10)
             .padding(2),
+            row![
+                detail_row("Status:", format!("{}", process.status)).width(Length::FillPortion(1)),
+                detail_row("Runtime(h):", format!("{}", process.run_time / 360)).width(Length::FillPortion(1)),  
+            ],
             row![
                 detail_row("PID:", process.pid.as_u32().to_string()).width(Length::FillPortion(1)),
                 detail_row("Parent PID:", parent_pid_str).width(Length::FillPortion(1)),
             ],
             row![
                 detail_row("CPU %:", format!("{:.2}", cpu_percent)).width(Length::FillPortion(1)),
-                detail_row("Memory %:", format!("{:.2}", mem_percent)).width(Length::FillPortion(1)),
+                detail_row("Acc CPU time(ms):", format!("{}", process.acc_cpu_time)).width(Length::FillPortion(1)),
             ],
             row![
                 detail_row("Memory (bytes):", format!("{}", process.memory_usage)).width(Length::FillPortion(1)),
-                detail_row("Disk Usage:", "N/A".to_string()).width(Length::FillPortion(1)),
-            ]
+                detail_row("Memory %:", format!("{:.2}", mem_percent)).width(Length::FillPortion(1)),
+                
+            ],
+            row![
+                detail_row("read bytes: new/total:", format!("{}/{}", process.disk_usage.read_bytes, process.disk_usage.total_read_bytes)).width(Length::FillPortion(1)),
+                detail_row("written bytes: new/total:", format!("{}/{}", process.disk_usage.written_bytes, process.disk_usage.total_written_bytes)).width(Length::FillPortion(1)),
+                
+            ],
         ]
         .spacing(5)
         .padding(10)
@@ -94,17 +104,7 @@ pub fn view<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a, Message>
 
         details_column.into()
     } else {
-        // Show placeholder when no process is selected
-        container(
-            text("No process selected")
-                .width(Length::Fill)
-                .horizontal_alignment(iced::alignment::Horizontal::Center)
-        )
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .align_x(iced::alignment::Horizontal::Center)
-        .align_y(iced::alignment::Vertical::Center)
-        .into()
+        text("").into()
     };
 
     let filtered = state.get_filtered();
