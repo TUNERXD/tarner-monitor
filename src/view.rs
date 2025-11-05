@@ -18,9 +18,9 @@ pub fn view<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a, Message>
         .style(iced::theme::Button::Destructive);
 
     let sort_buttons = row![
-        button("Name ↕").on_press(Message::SortAlpha),
-        button("CPU ↕").on_press(Message::SortCpu),
-        button("Mem ↕").on_press(Message::SortMem),
+        button("Name").on_press(Message::SortAlpha),
+        button("CPU").on_press(Message::SortCpu),
+        button("Mem").on_press(Message::SortMem),
     ]
     .spacing(5);
 
@@ -47,30 +47,65 @@ pub fn view<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a, Message>
     .spacing(10)
     .padding(10);
 
-    let details_pane = column![
-        row![
-            text("Process Name").width(Length::FillPortion(1)),
-            text("Name").width(Length::FillPortion(1)),
-            text("Parent Pid").width(Length::FillPortion(1)),
-            text("Pid").width(Length::FillPortion(1)),
-        ],
-        row![
-            text("Cpu%").width(Length::FillPortion(1)),
-            text("Cpu%").width(Length::FillPortion(1)),
-        ],
-        row![
-            text("Memory Usage").width(Length::FillPortion(1)),
-            text("Memory Usage").width(Length::FillPortion(1)),
-        ],
-        row![
-            text("Disc Usage").width(Length::FillPortion(1)),
-            text("Discs").width(Length::FillPortion(1)),
-        ],
-        row![
-            text("Network Usage").width(Length::FillPortion(1)),
-            text("Network").width(Length::FillPortion(1)),
-        ],
-    ];
+    let details_pane: Element<'a, Message> = if let Some(process) = &state.selected_process {
+        // Calculate percentages using state totals
+        let cpu_percent = process.cpu_usage / state.cpu_len as f32;
+        let mem_percent = (process.memory_usage as f64 / state.total_memory as f64) * 100.0;
+        let parent_pid_str = process.parent_pid.map_or_else(
+            || "N/A".to_string(), // Handle processes with no parent
+            |pid| pid.as_u32().to_string()
+        );
+
+        // Helper closure to create a detail row
+        let detail_row = |label: &str, value: String| {
+            row![
+                text(label).width(Length::FillPortion(1)),
+                text(value).width(Length::FillPortion(3)),
+            ]
+            .spacing(10)
+            .padding(2)
+        };
+
+        // Build the column with process details
+        let details_column = column![
+            text("Process Details").size(20),
+            row![
+                text("Name: ").width(Length::FillPortion(1)),
+                text(process.name.to_string_lossy().to_string()).width(Length::FillPortion(7)),
+            ]
+            .spacing(10)
+            .padding(2),
+            row![
+                detail_row("PID:", process.pid.as_u32().to_string()).width(Length::FillPortion(1)),
+                detail_row("Parent PID:", parent_pid_str).width(Length::FillPortion(1)),
+            ],
+            row![
+                detail_row("CPU %:", format!("{:.2}", cpu_percent)).width(Length::FillPortion(1)),
+                detail_row("Memory %:", format!("{:.2}", mem_percent)).width(Length::FillPortion(1)),
+            ],
+            row![
+                detail_row("Memory (bytes):", format!("{}", process.memory_usage)).width(Length::FillPortion(1)),
+                detail_row("Disk Usage:", "N/A".to_string()).width(Length::FillPortion(1)),
+            ]
+        ]
+        .spacing(5)
+        .padding(10)
+        .width(Length::Fill);
+
+        details_column.into()
+    } else {
+        // Show placeholder when no process is selected
+        container(
+            text("No process selected")
+                .width(Length::Fill)
+                .horizontal_alignment(iced::alignment::Horizontal::Center)
+        )
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .align_x(iced::alignment::Horizontal::Center)
+        .align_y(iced::alignment::Vertical::Center)
+        .into()
+    };
 
     let filtered = state.get_filtered();
     let mut process_list = Column::new().spacing(2);
