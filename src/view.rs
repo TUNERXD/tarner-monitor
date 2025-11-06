@@ -1,6 +1,6 @@
-use crate::state::{Message, TarnerMonitor, AppTheme, Tab};
+use crate::state::{AppTheme, Message, Tab, TarnerMonitor};
 use iced::widget::{button, column, container, row, scrollable, text, text_input, Column};
-use iced::{Element, Length, Theme, Alignment};
+use iced::{Element, Length, Theme, Alignment, Color};
 
 pub fn view<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a, Message> {
     let tab_buttons = row![
@@ -32,7 +32,7 @@ pub fn view<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a, Message>
     let tab_content = match state.active_tab {
         Tab::Processes => view_processes(state),
         Tab::System => view_system(state),
-        Tab::Settings => view_settings(state, _theme),
+        Tab::Settings => view_settings(state, _theme.clone()),
     };
 
     let main_layout = column![
@@ -42,11 +42,20 @@ pub fn view<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a, Message>
     .spacing(10);
 
     let toast = if let Some(status) = &state.toast {
+
+        let text_color = if status.starts_with("Error") || status.starts_with("Failed") {
+            Color::from_rgb(0.8, 0.0, 0.0) // Dark Red
+        } else if status.starts_with("Success") || status.starts_with("Export successful") {
+            Color::from_rgb(0.0, 0.7, 0.0) // Dark Green
+        } else {
+            _theme.palette().text // Default theme color
+        };
+
         let toast_content = container(
-            text(status)
+            text(status).style(text_color)
         )
         .padding(10)
-        .style(iced::theme::Container::Transparent);
+        .style(iced::theme::Container::Box);
 
         container(toast_content)
             .width(Length::Fill)
@@ -302,30 +311,55 @@ fn view_settings<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a, Mes
         .on_press(Message::ExportToCsv)
         .style(iced::theme::Button::Positive);
 
-    let logs_title = text("Event Logs").size(20);
+    let reload_logs_button = button("Reload Logs")
+        .on_press(Message::LoadLogs);
+
+    let logs_title = row![
+        text("Event Logs").size(20),
+        reload_logs_button,
+    ]
+    .spacing(10)
+    .align_items(Alignment::Center);
 
     let mut logs_column = Column::new().spacing(10);
 
-    for log in state.logs.iter().rev(){
-        logs_column = logs_column.push(text(log))
+    for line in state.log_lines.iter().rev() {
+        // Simple parsing to color the logs
+        let (log_text, log_color) = if line.contains("[ERROR]") {
+            (line, iced::Color::from_rgb(0.8, 0.0, 0.0)) // Red
+        } else if line.contains("[WARN]") {
+            (line, iced::Color::from_rgb(0.9, 0.9, 0.0)) // Yellow
+        } else {
+            (line, iced::Color::from_rgb(0.7, 0.7, 0.7)) // gray
+        };
+        
+        logs_column = logs_column.push(
+            text(log_text).style(log_color)
+        );
     }
 
+
     let logs_container = container(
-        scrollable(logs_column).width(Length::Fill)
-    );
+        scrollable(logs_column)
+            .width(Length::Fill)
+            .height(Length::Fill)
+    )
+    .style(iced::theme::Container::Box)
+    .padding(5);
 
     let content = column! [
         text("Settings").size(24),
         row![
-            theme_toggle.padding(20).width(Length::FillPortion(1)),
-            export_csv.padding(20).width(Length::FillPortion(1)),
+            theme_toggle.padding(20),
+            export_csv.padding(20),
         ].spacing(10).padding(20),
         logs_title,
         logs_container,
 
     ]
     .spacing(10)
-    .padding(10);
+    .padding(10)
+    .height(Length::Fill);
 
-    scrollable(content).height(Length::Fill).into()
+    content.into()
 }

@@ -1,11 +1,13 @@
 use crate::process::ProcessInfo;
 use crate::system::SystemManager;
+use crate::logger;
 use iced::{Application, Command, Theme, time, Subscription}; 
 use std::time::Duration;
 use sysinfo::Pid;
 use serde::{Serialize, Deserialize};
 use std::{fs, io};
 use std::path::PathBuf;
+use log::{info, warn, error};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum AppTheme {
@@ -115,6 +117,8 @@ pub enum Message {
     ExportToCsv,
     ExportFinished(Result<String, String>),
     HideToast,
+    LoadLogs,
+    LogsLoaded(Result<Vec<String>, String>),
 }
 pub struct TarnerMonitor {
     pub processes: Vec<ProcessInfo>,
@@ -126,7 +130,7 @@ pub struct TarnerMonitor {
     pub active_tab: Tab,
     pub kill_confirm: bool,
     pub toast: Option<String>,
-    pub logs: Vec<String>,
+    pub log_lines: Vec<String>,
 }
 
 impl TarnerMonitor {
@@ -135,8 +139,7 @@ impl TarnerMonitor {
         let system_manager = SystemManager::new();
         let processes = system_manager.get_processes();
 
-        let mut logs = Vec::new();
-        logs.push("Application started".to_string());
+        info!("Application started");
 
         let mut app = TarnerMonitor {
             processes,
@@ -148,18 +151,11 @@ impl TarnerMonitor {
             active_tab: Tab::Processes,
             kill_confirm: false,
             toast: None,
-            logs,
+            log_lines: Vec::new(),
         };  
 
         app.apply_sort(); 
         app
-    }
-
-    fn push_log(&mut self, message: String) {
-        self.logs.push(message);
-        if self.logs.len() > 100 {
-            self.logs.remove(0);
-        }
     }
 
     // For searching processes
@@ -303,6 +299,16 @@ async fn export_action(
     Ok(format!("Export successful to {}", file_path_str))
 }
 
+async fn load_logs_action() -> Result<Vec<String>, String> {
+    let Some(log_path) = logger::get_log_path() else {
+        return Err("Log path not found.".to_string());
+    };
+    
+    fs::read_to_string(log_path)
+        .map(|contents| contents.lines().map(String::from).collect())
+        .map_err(|e| format!("Failed to read log file: {}", e))
+}
+
 impl Application for TarnerMonitor {
     type Executor = iced::executor::Default;
     type Message = Message;
@@ -331,19 +337,19 @@ impl Application for TarnerMonitor {
                     .find(|p| p.pid == pid)
                     .cloned();
                 if self.selected_process.is_some() {
-                    self.push_log(format!("selected {:?}", self.selected_process.as_ref().unwrap().name));
+                    info!("Selected process: {:?}", self.selected_process.as_ref().unwrap().name);
                 }
                 self.kill_confirm = false;
                 
             },
             Message::SearchChanged(search) => {
                 self.search_str = search;
-                self.push_log(format!("Filter for {}", self.search_str));
+                info!("Set process filter to: {}", self.search_str);
             },
             Message::RequestKill => {
                 if self.selected_process.is_some() {
                     self.kill_confirm = true;
-                    self.push_log(format!("Requested Kill {:?}", self.selected_process.as_ref().unwrap().name));
+                    warn!("Kill requested for: {:?}", self.selected_process.as_ref().unwrap().name);
                 }
             },
             Message::ConfirmKill => {
@@ -352,13 +358,21 @@ impl Application for TarnerMonitor {
                 self.selected_process = None;
 
                 let msg = if success {
-                    format!("Successfully killed parent of {}", name)
+                    let msg = format!("Successfully killed parent of {}", name);
+                    msg
                 } else {
-                    format!("Failed to kill parent of {}", name)
+                    let msg = format!("Failed to kill parent of {}", name);
+                    msg
                 };
                 
-                self.toast = Some(msg.clone());
-                self.push_log(msg);
+                if success {
+                    info!("{}", msg);
+                }
+                else {
+                    error!("{}", msg)
+                }
+
+                self.toast = Some(msg);
                 
                 return Command::perform(
                     async { tokio::time::sleep(Duration::from_secs(3)).await },
@@ -367,35 +381,35 @@ impl Application for TarnerMonitor {
             },
             Message::CancelKill => {
                 self.kill_confirm = false;
-                self.push_log(String::from("Kill Canceled"));
+                info!("Kill canceled");
             },
             Message::SortAlpha => {
                 if self.current_sort == SortBy::AlphaAsc {
                     self.current_sort = SortBy::AlphaDesc;
-                    self.push_log(String::from("Sort Alphabet Descending"));
+                    info!("Sort Alphabet Descending");
                 } else {
                     self.current_sort = SortBy::AlphaAsc;
-                    self.push_log(String::from("Sort Alphabet Ascending"));
+                    info!("Sort Alphabet Ascending");
                 }
                 self.apply_sort();
             },
             Message::SortCpu => {
                 if self.current_sort == SortBy::CpuAsc {
                     self.current_sort = SortBy::CpuDesc;
-                    self.push_log(String::from("Sort Cpu Descending"));
+                    info!("Sort Cpu Descending");
                 } else {
                     self.current_sort = SortBy::CpuAsc;
-                    self.push_log(String::from("Sort Cpu Ascending"));
+                    info!("Sort Cpu Ascending");
                 }
                 self.apply_sort();
             },
             Message::SortMem => {
                 if self.current_sort == SortBy::MemAsc {
                     self.current_sort = SortBy::MemDesc;
-                    self.push_log(String::from("Sort Memory Descending"));
+                    info!("Sort Memory Descending");
                 } else {
                     self.current_sort = SortBy::MemAsc;
-                    self.push_log(String::from("Sort Memory Ascending"));
+                    info!("Sort Memory Ascending");
                 }
                 self.apply_sort();
             },
@@ -406,25 +420,29 @@ impl Application for TarnerMonitor {
             Message::ToggleTheme => {
                 self.theme = match self.theme {
                     AppTheme::Light => {
-                        self.push_log(String::from("Change to Dark Theme"));
+                        info!("Changed to Dark Theme");
                         AppTheme::Dark
                     },
                     AppTheme::Dark => {
-                        self.push_log(String::from("Change to Light Theme"));
+                        info!("Changed to Light Theme");
                         AppTheme::Light
                     },
                 };
                 let settings = AppSettings { theme: self.theme };
-                self.push_log(String::from("Theme Saved"));
                 settings.save();
             },
             Message::TabSelected(tab) => {
                 self.active_tab = tab;
-                self.push_log(String::from("Changed Tab"));
+                info!("Changed Tab to {:?}", tab);
+
+                if tab == Tab::Settings {
+                    return Command::perform(load_logs_action(), Message::LogsLoaded);
+                }
                 
             },
             Message::ExportToCsv => {
                 self.toast = Some("Exporting...".to_string());
+                info!("Exporting to CSV...");
                 
                 let processes_to_export: Vec<ProcessInfo> = self.get_filtered()
                     .into_iter()
@@ -440,25 +458,41 @@ impl Application for TarnerMonitor {
                 );
             },
             Message::ExportFinished(result) => {
-                match result {
+                let msg = match result {
                     Ok(success_message) => {
-                        self.push_log(String::from("Export Success"));
-                        self.toast = Some(success_message)
+                        info!("Export Success: {}", success_message);
+                        success_message
                     },
                     Err(error_message) => {
-                        self.push_log(String::from("Export Failed"));
-                        self.toast = Some(format!("Error: {}", error_message));
+                        error!("Export Failed: {}", error_message);
+                        format!("Error: {}", error_message)
                     },
-                }
+                };
+                self.toast = Some(msg);
+
                 return Command::perform(
                     async { tokio::time::sleep(Duration::from_secs(3)).await },
                     |_| Message::HideToast,
                 );
             },
-            
             Message::HideToast => {
                 self.toast = None;
-                self.push_log(String::from("Toast Hidden"));
+            },
+            Message::LoadLogs => {
+                self.log_lines = vec!["Loading logs...".to_string()];
+                return Command::perform(load_logs_action(), Message::LogsLoaded);
+            },
+            Message::LogsLoaded(result) => {
+                match result {
+                    Ok(lines) => {
+                        info!("Successfully loaded {} log lines", lines.len());
+                        self.log_lines = lines;
+                    },
+                    Err(e) => {
+                        error!("Failed to load logs for view: {}", e);
+                        self.log_lines = vec![e];
+                    }
+                }
             }
         }
         Command::none()
