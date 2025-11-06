@@ -38,14 +38,43 @@ pub fn view<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a, Message>
         Tab::Settings => view_settings(state, _theme),
     };
 
-    // Combine tabs and content
-    let content = column![
+    let main_layout = column![
         tab_buttons,
         tab_content,
     ]
     .spacing(10);
 
-    container(content)
+    let toast = if let Some(status) = &state.export_status {
+        let style = if status.starts_with("Error") {
+            iced::theme::Container::Transparent
+        } else {
+            iced::theme::Container::Transparent
+        };
+
+        let toast_content = container(
+            text(status)
+        )
+        .padding(10)
+        .style(style);
+
+        container(toast_content)
+            .width(Length::Fill)
+            .height(Length::Shrink)
+            .align_x(iced::alignment::Horizontal::Center)
+            .padding(5)
+    
+    } else {
+        // Return an empty container if there's no message
+        container(text("")).height(Length::Shrink)
+    };
+
+    // --- STACK THE MAIN LAYOUT AND TOAST ---
+    let final_content = column![
+        main_layout.height(Length::Fill), // Main content fills the space
+        toast, // Toast appears at the bottom
+    ];
+
+    container(final_content) // The main window container
         .width(Length::Fill)
         .height(Length::Fill)
         .padding(10)
@@ -283,12 +312,12 @@ fn view_settings<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a, Mes
         .style(iced::theme::Button::Secondary);
 
     let export_csv = button("Export to CSV")
-        .on_press(Message::ToggleTheme)
-        .style(iced::theme::Button::Secondary);
+        .on_press(Message::ExportToCsv)
+        .style(iced::theme::Button::Positive);
 
     let content = column! [
         theme_toggle,
-        export_csv
+        export_csv,
     ]
     .spacing(10)
     .padding(10);

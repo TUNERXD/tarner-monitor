@@ -112,6 +112,9 @@ pub enum Message {
     RequestKill,
     ConfirmKill,
     CancelKill,
+    ExportToCsv,
+    ExportFinished(Result<String, String>),
+    HideExportToast,
 }
 pub struct TarnerMonitor {
     pub processes: Vec<ProcessInfo>,
@@ -122,6 +125,7 @@ pub struct TarnerMonitor {
     pub theme: AppTheme,
     pub active_tab: Tab,
     pub kill_confirm: bool,
+    pub export_status: Option<String>,
 }
 
 impl TarnerMonitor {
@@ -139,6 +143,7 @@ impl TarnerMonitor {
             theme: settings.theme,
             active_tab: Tab::Processes,
             kill_confirm: false,
+            export_status: None,
         };  
 
         app.apply_sort(); 
@@ -240,6 +245,59 @@ impl TarnerMonitor {
     }
 }
 
+async fn export_action(
+    processes: Vec<ProcessInfo>, 
+    cpu_cores: usize, 
+    total_memory: u64
+) -> Result<String, String> {
+    
+    let Some(mut path) = dirs::download_dir() else {
+        return Err("Could not find download directory.".to_string());
+    };
+    path.push("tarner_monitor_export.csv");
+    let file_path_str = path.to_string_lossy().to_string();
+
+    let mut writer = match csv::Writer::from_path(&path) {
+        Ok(w) => w,
+        Err(e) => return Err(format!("Failed to create file: {}", e)),
+    };
+
+    writer.write_record([
+        "PID",
+        "Name",
+        "Parent PID",
+        "Status",
+        "CPU %",
+        "Memory %",
+        "Memory (bytes)",
+        "Disk Read (bytes)",
+        "Disk Write (bytes)",
+        "Runtime (sec)",
+    ]).map_err(|e| format!("Failed to write header: {}", e))?;
+
+    for p in processes {
+        let cpu_percent = p.cpu_usage / cpu_cores as f32;
+        let mem_percent = (p.memory_usage as f64 / total_memory as f64) * 100.0;
+        let parent_pid = p.parent_pid.map_or_else(|| "N/A".to_string(), |pid| pid.as_u32().to_string());
+        
+        writer.write_record([
+            p.pid.as_u32().to_string(),
+            p.name.to_string_lossy().to_string(),
+            parent_pid,
+            format!("{}", p.status),
+            format!("{:.2}", cpu_percent),
+            format!("{:.2}", mem_percent),
+            p.memory_usage.to_string(),
+            p.disk_usage.read_bytes.to_string(),
+            p.disk_usage.written_bytes.to_string(),
+            p.run_time.to_string(),
+        ]).map_err(|e| format!("Failed to write record: {}", e))?;
+    }
+
+    writer.flush().map_err(|e| format!("Failed to flush CSV: {}", e))?;
+    Ok(format!("Export successful to {}", file_path_str))
+}
+
 impl Application for TarnerMonitor {
     type Executor = iced::executor::Default;
     type Message = Message;
@@ -260,6 +318,7 @@ impl Application for TarnerMonitor {
     }
 
     fn update(&mut self, message: Message) -> Command<Message> {
+
         match message {
             Message::ProcessSelected(pid) => {
                 self.selected_process = self.processes
@@ -323,6 +382,38 @@ impl Application for TarnerMonitor {
             Message::TabSelected(tab) => {
                 self.active_tab = tab;
             },
+            Message::ExportToCsv => {
+                self.export_status = Some("Exporting...".to_string());
+                
+                // Get the *currently displayed* processes to export
+                let processes_to_export: Vec<ProcessInfo> = self.get_filtered()
+                    .into_iter()
+                    .cloned()
+                    .collect();
+                
+                let cpu_cores = self.system_manager.cpu_cores;
+                let total_memory = self.system_manager.total_memory;
+
+                // Return a command to run our async function
+                return Command::perform(
+                    export_action(processes_to_export, cpu_cores, total_memory), 
+                    Message::ExportFinished
+                );
+            },
+            Message::ExportFinished(result) => {
+                match result {
+                    Ok(success_message) => self.export_status = Some(success_message),
+                    Err(error_message) => self.export_status = Some(format!("Error: {}", error_message)),
+                }
+
+                return Command::perform(
+                    async { tokio::time::sleep(Duration::from_secs(3)).await },
+                    |_| Message::HideExportToast,
+                );
+            }
+            Message::HideExportToast => {
+                self.export_status = None;
+            }
         }
         Command::none()
     }
