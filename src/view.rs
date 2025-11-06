@@ -2,7 +2,6 @@ use crate::state::{Message, TarnerMonitor, AppTheme, Tab};
 use iced::widget::{button, column, container, row, scrollable, text, text_input, Column};
 use iced::{Element, Length, Theme, Alignment};
 
-// TODO: Confirm when Kill process
 // TODO: Export Processes to CSV
 
 pub fn view<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a, Message> {
