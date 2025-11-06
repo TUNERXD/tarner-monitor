@@ -6,7 +6,7 @@ use std::time::Duration;
 // test 1: complete monitoring cycle
 #[test]
 fn test_complete_monitoring_cycle() {
-    println!("🔄 Starting complete monitoring cycle test...");
+    println!("Starting complete monitoring cycle test...");
     let mut monitor = TarnerMonitor::new();
     let initial_count = monitor.processes.len();
     println!("Initial process count: {}", initial_count);
@@ -140,9 +140,9 @@ fn test_process_selection_and_details() {
     assert!(selected.pid.as_u32() > 0);
     assert!(!selected.name.is_empty());
     assert!(selected.memory_usage >= 0);
-    println!("  PID: {}", selected.pid.as_u32());
-    println!("  CPU: {:.2}%", selected.cpu_usage);
-    println!("  Memory: {} bytes", selected.memory_usage);
+    println!("PID: {}", selected.pid.as_u32());
+    println!("CPU: {:.2}%", selected.cpu_usage);
+    println!("Memory: {} bytes", selected.memory_usage);
     thread::sleep(Duration::from_millis(500));
     monitor.refresh_processes();
     if let Some(still_selected) = &monitor.selected_process {
@@ -184,7 +184,6 @@ fn test_system_information_retrieval() {
     assert!(!system_manager.os_version.is_empty());
     assert!(!system_manager.kernel_version.is_empty());
     assert!(!system_manager.hostname.is_empty());
-    
     println!("OS Name: {}", system_manager.os_name);
     println!("OS Version: {}", system_manager.os_version);
     println!("Kernel: {}", system_manager.kernel_version);
