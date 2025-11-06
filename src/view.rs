@@ -1,8 +1,6 @@
-use crate::state::{Message, TarnerMonitor, AppTheme, Tab, ToastType};
+use crate::state::{Message, TarnerMonitor, AppTheme, Tab};
 use iced::widget::{button, column, container, row, scrollable, text, text_input, Column};
 use iced::{Element, Length, Theme, Alignment};
-
-// TODO: Logs
 
 pub fn view<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a, Message> {
     let tab_buttons = row![
@@ -43,18 +41,12 @@ pub fn view<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a, Message>
     ]
     .spacing(10);
 
-    let toast = if let Some((status, toast_type)) = &state.toast {
-        // Use the toast_type to set the style
-        let style = match toast_type {
-            ToastType::Success => iced::theme::Container::Transparent,
-            ToastType::Error => iced::theme::Container::Transparent,
-        };
-
+    let toast = if let Some(status) = &state.toast {
         let toast_content = container(
             text(status)
         )
         .padding(10)
-        .style(style); // This gives it a green (Success) or red (Destructive) background
+        .style(iced::theme::Container::Transparent);
 
         container(toast_content)
             .width(Length::Fill)
@@ -66,13 +58,12 @@ pub fn view<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a, Message>
         container(text("")).height(Length::Shrink)
     };
 
-    // --- STACK THE MAIN LAYOUT AND TOAST ---
     let final_content = column![
-        main_layout.height(Length::Fill), // Main content fills the space
-        toast, // Toast appears at the bottom
+        main_layout.height(Length::Fill),
+        toast,
     ];
 
-    container(final_content) // The main window container
+    container(final_content)
         .width(Length::Fill)
         .height(Length::Fill)
         .padding(10)
@@ -203,7 +194,6 @@ pub fn view_processes<'a>(state: &'a TarnerMonitor) -> Element<'a, Message> {
 
         details_column.into()
     } else {
-        // --- 3. RENDER NOTHING (Your existing code) ---
         text("").into()
     };
 
@@ -258,7 +248,7 @@ fn view_system<'a>(state: &'a TarnerMonitor) -> Element<'a, Message> {
     // Helper to create styled rows
     let detail_row = |label: &str, value: String| {
         row![
-            text(label).width(Length::Fixed(150.0)), // Fixed label width for alignment
+            text(label).width(Length::Fixed(150.0)),
             text(value),
         ]
         .spacing(10)
@@ -266,7 +256,6 @@ fn view_system<'a>(state: &'a TarnerMonitor) -> Element<'a, Message> {
     };
 
     // Get system info from the system_manager
-    // We call this on every view, but sysinfo caches it, so it's fast.
     let sys = &state.system_manager.system;
     
     let os_name = state.system_manager.os_name.to_string();
@@ -313,9 +302,27 @@ fn view_settings<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a, Mes
         .on_press(Message::ExportToCsv)
         .style(iced::theme::Button::Positive);
 
+    let logs_title = text("Event Logs").size(20);
+
+    let mut logs_column = Column::new().spacing(10);
+
+    for log in state.logs.iter().rev(){
+        logs_column = logs_column.push(text(log))
+    }
+
+    let logs_container = container(
+        scrollable(logs_column).width(Length::Fill)
+    );
+
     let content = column! [
-        theme_toggle,
-        export_csv,
+        text("Settings").size(24),
+        row![
+            theme_toggle.padding(20).width(Length::FillPortion(1)),
+            export_csv.padding(20).width(Length::FillPortion(1)),
+        ].spacing(10).padding(20),
+        logs_title,
+        logs_container,
+
     ]
     .spacing(10)
     .padding(10);
