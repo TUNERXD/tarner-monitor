@@ -1,8 +1,8 @@
-use crate::state::{AppTheme, Message, Tab, TarnerMonitor};
+use crate::state::{AppTheme, Message, Tab, TarnerMonitor, ToastType};
 use iced::widget::{button, column, container, row, scrollable, text, text_input, Column};
 use iced::{Element, Length, Theme, Alignment, Color};
 
-pub fn view<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a, Message> {
+pub fn view<'a>(state: &'a TarnerMonitor, theme: Theme) -> Element<'a, Message> {
     let tab_buttons = row![
         button("Processes")
             .on_press(Message::TabSelected(Tab::Processes))
@@ -32,7 +32,7 @@ pub fn view<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a, Message>
     let tab_content = match state.active_tab {
         Tab::Processes => view_processes(state),
         Tab::System => view_system(state),
-        Tab::Settings => view_settings(state, _theme.clone()),
+        Tab::Settings => view_settings(state, theme.clone()),
     };
 
     let main_layout = column![
@@ -41,14 +41,11 @@ pub fn view<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a, Message>
     ]
     .spacing(10);
 
-    let toast = if let Some(status) = &state.toast {
+    let toast = if let Some((status, toast_type)) = &state.toast {
 
-        let text_color = if status.starts_with("Error") || status.starts_with("Failed") {
-            Color::from_rgb(0.8, 0.0, 0.0) // Dark Red
-        } else if status.starts_with("Success") || status.starts_with("Export successful") {
-            Color::from_rgb(0.0, 0.7, 0.0) // Dark Green
-        } else {
-            _theme.palette().text // Default theme color
+        let text_color = match toast_type {
+            ToastType::Error => Color::from_rgb(0.8, 0.0, 0.0),
+            ToastType::Success => Color::from_rgb(0.0, 0.7, 0.0), 
         };
 
         let toast_content = container(
@@ -84,7 +81,7 @@ pub fn view_processes<'a>(state: &'a TarnerMonitor) -> Element<'a, Message> {
         .on_input(Message::SearchChanged)
         .padding(10);
 
-    let end_task_button = button("End Task")
+    let end_task_button = button("End Task (Del)")
         .on_press(Message::RequestKill)
         .style(iced::theme::Button::Destructive);
 

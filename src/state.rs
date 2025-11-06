@@ -1,7 +1,7 @@
 use crate::process::ProcessInfo;
 use crate::system::SystemManager;
 use crate::logger;
-use iced::{Application, Command, Theme, time, Subscription}; 
+use iced::{Application, Command, Theme, time, Subscription, keyboard, event, Event};
 use std::time::Duration;
 use sysinfo::Pid;
 use serde::{Serialize, Deserialize};
@@ -101,6 +101,12 @@ pub enum Tab {
     Settings,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ToastType {
+    Success,
+    Error,
+}
+
 #[derive(Debug, Clone)]
 pub enum Message {
     ProcessSelected(Pid),     
@@ -119,6 +125,7 @@ pub enum Message {
     HideToast,
     LoadLogs,
     LogsLoaded(Result<Vec<String>, String>),
+    EventOccurred(iced::Event),
 }
 pub struct TarnerMonitor {
     pub processes: Vec<ProcessInfo>,
@@ -129,7 +136,7 @@ pub struct TarnerMonitor {
     pub theme: AppTheme,
     pub active_tab: Tab,
     pub kill_confirm: bool,
-    pub toast: Option<String>,
+    pub toast: Option<(String, ToastType)>,
     pub log_lines: Vec<String>,
 }
 
@@ -357,12 +364,12 @@ impl Application for TarnerMonitor {
                 self.kill_confirm = false;
                 self.selected_process = None;
 
-                let msg = if success {
+                let (msg, style) = if success {
                     let msg = format!("Successfully killed parent of {}", name);
-                    msg
+                    (msg, ToastType::Success)
                 } else {
                     let msg = format!("Failed to kill parent of {}", name);
-                    msg
+                    (msg, ToastType::Error)
                 };
                 
                 if success {
@@ -372,7 +379,7 @@ impl Application for TarnerMonitor {
                     error!("{}", msg)
                 }
 
-                self.toast = Some(msg);
+                self.toast = Some((msg, style));
                 
                 return Command::perform(
                     async { tokio::time::sleep(Duration::from_secs(3)).await },
@@ -441,7 +448,7 @@ impl Application for TarnerMonitor {
                 
             },
             Message::ExportToCsv => {
-                self.toast = Some("Exporting...".to_string());
+                self.toast = Some(("Exporting...".to_string(), ToastType::Success));
                 info!("Exporting to CSV...");
                 
                 let processes_to_export: Vec<ProcessInfo> = self.get_filtered()
@@ -458,17 +465,17 @@ impl Application for TarnerMonitor {
                 );
             },
             Message::ExportFinished(result) => {
-                let msg = match result {
+                let (msg, style) = match result {
                     Ok(success_message) => {
                         info!("Export Success: {}", success_message);
-                        success_message
+                        (success_message, ToastType::Success)
                     },
                     Err(error_message) => {
                         error!("Export Failed: {}", error_message);
-                        format!("Error: {}", error_message)
+                        (format!("Error: {}", error_message), ToastType::Error)
                     },
                 };
-                self.toast = Some(msg);
+                self.toast = Some((msg, style));
 
                 return Command::perform(
                     async { tokio::time::sleep(Duration::from_secs(3)).await },
@@ -493,7 +500,28 @@ impl Application for TarnerMonitor {
                         self.log_lines = vec![e];
                     }
                 }
-            }
+            },
+            Message::EventOccurred(event) => {
+                // Filter for *only* the event we care about
+                if let Event::Keyboard(keyboard::Event::KeyPressed { key, .. }) = event {
+                    // Check if the key is 'Delete'
+                    match key {
+                        keyboard::Key::Named(keyboard::key::Named::Delete) => {
+                            // Check our app's state
+                            if self.active_tab == Tab::Processes 
+                                && !self.kill_confirm 
+                                && self.selected_process.is_some() 
+                            {
+                                // Trigger the kill confirmation
+                                self.kill_confirm = true;
+                                warn!("Kill requested for: {:?}", self.selected_process.as_ref().unwrap().name);
+                            }
+                        },
+                        _ => {}
+                    }
+                }
+                return Command::none();
+            },
         }
         Command::none()
     }
@@ -503,7 +531,11 @@ impl Application for TarnerMonitor {
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        iced::time::every(Duration::from_secs(1))
-            .map(Message::RefreshTick)
+        Subscription::batch(vec![
+            iced::time::every(Duration::from_secs(1))
+                .map(Message::RefreshTick),
+            
+            event::listen().map(Message::EventOccurred),
+        ])
     }
 }
