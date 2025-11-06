@@ -4,7 +4,7 @@ use tarner_monitor::system::SystemManager;
 use sysinfo::{Pid, ProcessStatus, DiskUsage};
 use std::ffi::OsString;
 
-// ========== Unit Test 1: ProcessInfo Creation ==========
+// test 1: processInfo creation
 #[test]
 fn test_process_info_creation() {
     let process = ProcessInfo::new(
@@ -27,7 +27,7 @@ fn test_process_info_creation() {
     assert_eq!(process.run_time, 3600);
 }
 
-// ========== Unit Test 2: Process Name Validation ==========
+// test 2: process name validation
 #[test]
 fn test_process_name_not_empty() {
     let process = ProcessInfo::new(
@@ -46,7 +46,7 @@ fn test_process_name_not_empty() {
     assert_eq!(process.name.to_string_lossy(), "chrome");
 }
 
-// ========== Unit Test 3: Process PID Validation ==========
+// test 3: process PID validation
 #[test]
 fn test_process_pid_positive() {
     let process = ProcessInfo::new(
@@ -65,7 +65,7 @@ fn test_process_pid_positive() {
     assert_eq!(process.pid.as_u32(), 5678);
 }
 
-// ========== Unit Test 4: CPU Usage Bounds ==========
+// test 4: CPU usage bounds 
 #[test]
 fn test_cpu_usage_within_bounds() {
     let process = ProcessInfo::new(
@@ -84,7 +84,7 @@ fn test_cpu_usage_within_bounds() {
     assert!(process.cpu_usage <= 100.0);
 }
 
-// ========== Unit Test 5: Memory Usage Non-Negative ==========
+// test 5: memory usage non-negative
 #[test]
 fn test_memory_usage_non_negative() {
     let process = ProcessInfo::new(
@@ -102,7 +102,7 @@ fn test_memory_usage_non_negative() {
     assert!(process.memory_usage >= 0);
 }
 
-// ========== Unit Test 6: SystemManager Creation ==========
+// test 6: SystemManager creation 
 #[test]
 fn test_system_manager_initialization() {
     let system_manager = SystemManager::new();
@@ -113,12 +113,11 @@ fn test_system_manager_initialization() {
     assert!(!system_manager.hostname.is_empty());
 }
 
-// ========== Unit Test 7: CPU Core Count Realistic ==========
+// test 7: CPU core count realistic 
 #[test]
 fn test_cpu_core_count_realistic() {
     let system_manager = SystemManager::new();
-    
-    // Most systems have 1-256 cores
+
     assert!(
         system_manager.cpu_cores >= 1 && system_manager.cpu_cores <= 256,
         "Unrealistic CPU count: {}",
@@ -126,12 +125,12 @@ fn test_cpu_core_count_realistic() {
     );
 }
 
-// ========== Unit Test 8: Total Memory Validation ==========
+// test 8: total memory validation
 #[test]
 fn test_total_memory_validation() {
     let system_manager = SystemManager::new();
     
-    // Total memory should be at least 1 GB (1073741824 bytes)
+    // at least 1 GB
     assert!(
         system_manager.total_memory >= 1_073_741_824,
         "Total memory too low: {} bytes",
@@ -139,7 +138,7 @@ fn test_total_memory_validation() {
     );
 }
 
-// ========== Unit Test 9: Process Filtering Empty Search ==========
+// test 9: process filtering empty search
 #[test]
 fn test_process_filtering_empty_search() {
     let mut monitor = TarnerMonitor::new();
@@ -147,16 +146,16 @@ fn test_process_filtering_empty_search() {
     
     let filtered = monitor.get_filtered();
     
-    // When search is empty, should return all processes
+    // if empty, should return all processes
     assert_eq!(filtered.len(), monitor.processes.len());
 }
 
-// ========== Unit Test 10: Process Filtering With Search ==========
+// test 10: process filtering with search
 #[test]
 fn test_process_filtering_with_search() {
     let mut monitor = TarnerMonitor::new();
     
-    // Add test processes
+    // add test processes
     monitor.processes = vec![
         ProcessInfo::new(
             OsString::from("chrome"),
@@ -193,7 +192,7 @@ fn test_process_filtering_with_search() {
         ),
     ];
     
-    // Search for "chrome"
+    // search for "chrome"
     monitor.search_str = String::from("chrome");
     let filtered = monitor.get_filtered();
     
@@ -201,7 +200,7 @@ fn test_process_filtering_with_search() {
     assert_eq!(filtered[0].name.to_string_lossy(), "chrome");
 }
 
-// ========== Unit Test 11: Case Insensitive Search ==========
+// test 11: case insensitive search
 #[test]
 fn test_case_insensitive_search() {
     let mut monitor = TarnerMonitor::new();
@@ -220,14 +219,14 @@ fn test_case_insensitive_search() {
         ),
     ];
     
-    // Search with lowercase should find uppercase
+    // search with lowercase should find uppercase
     monitor.search_str = String::from("chrome");
     let filtered = monitor.get_filtered();
     
     assert_eq!(filtered.len(), 1);
 }
 
-// ========== Unit Test 12: Sort Alphabetically Ascending ==========
+// test 12: sort alphabetically ascending 
 #[test]
 fn test_sort_alphabetically_ascending() {
     let mut monitor = TarnerMonitor::new();
@@ -276,7 +275,7 @@ fn test_sort_alphabetically_ascending() {
     assert_eq!(monitor.processes[2].name.to_string_lossy(), "zebra");
 }
 
-// ========== Unit Test 13: Sort by CPU Descending ==========
+// test 13: sort by CPU descending
 #[test]
 fn test_sort_by_cpu_descending() {
     let mut monitor = TarnerMonitor::new();
@@ -325,7 +324,7 @@ fn test_sort_by_cpu_descending() {
     assert_eq!(monitor.processes[2].cpu_usage, 10.0);
 }
 
-// ========== Unit Test 14: Sort by Memory Descending ==========
+// test 14: sort by memory descending
 #[test]
 fn test_sort_by_memory_descending() {
     let mut monitor = TarnerMonitor::new();
@@ -374,14 +373,13 @@ fn test_sort_by_memory_descending() {
     assert_eq!(monitor.processes[2].memory_usage, 1024);
 }
 
-// ========== Unit Test 15: Theme Toggle ==========
+//test 15: theme toggle
 #[test]
 fn test_theme_toggle() {
     let mut monitor = TarnerMonitor::new();
     
     let initial_theme = monitor.theme;
     
-    // Toggle theme
     monitor.theme = match monitor.theme {
         AppTheme::Light => AppTheme::Dark,
         AppTheme::Dark => AppTheme::Light,
@@ -390,7 +388,7 @@ fn test_theme_toggle() {
     assert_ne!(monitor.theme, initial_theme);
 }
 
-// ========== Unit Test 16: Tab Selection ==========
+// test 16: tab selection 
 #[test]
 fn test_tab_selection() {
     let mut monitor = TarnerMonitor::new();
@@ -404,29 +402,18 @@ fn test_tab_selection() {
     assert_eq!(monitor.active_tab, Tab::Settings);
 }
 
-// ========================================
-// 🐛 BUG FIX TEST - Process Selection Memory Leak
-// ========================================
-// BUG FOUND: When rapidly selecting different processes, 
-//            the selected_process wasn't properly updated
-// CAUSE: Race condition in process selection during refresh
-// FIX: Added synchronization in refresh_processes() method
-//      to check if selected process still exists
-// ========================================
 
+// bug fix test
 #[test]
 fn test_process_selection_persistence_after_refresh() {
     let mut monitor = TarnerMonitor::new();
-    
-    // Refresh to get initial processes
     monitor.refresh_processes();
     
     if monitor.processes.is_empty() {
         println!("⚠️  No processes available for test");
         return;
     }
-    
-    // Select first process
+
     let first_process = monitor.processes[0].clone();
     monitor.selected_process = Some(first_process.clone());
     
@@ -434,7 +421,6 @@ fn test_process_selection_persistence_after_refresh() {
              first_process.name.to_string_lossy(), 
              first_process.pid.as_u32());
     
-    // Refresh multiple times
     for i in 1..=5 {
         monitor.refresh_processes();
         println!("Refresh {}: Selected process is {:?}", 
@@ -444,24 +430,23 @@ fn test_process_selection_persistence_after_refresh() {
     
     // BEFORE FIX: selected_process might become stale or point to wrong process
     // AFTER FIX: selected_process should either:
-    //   1. Still exist with updated data if process is still running
-    //   2. Be None if process was terminated
+    //   1. exist with updated data if process is still running
+    //   2. none if process was terminated
     
     if let Some(selected) = &monitor.selected_process {
-        // If still selected, verify it exists in current process list
         let exists = monitor.processes.iter().any(|p| p.pid == selected.pid);
         assert!(
             exists,
-            "❌ Bug detected! Selected process (PID: {}) not found in current process list",
+            "Bug detected! Selected process (PID: {}) not found in current process list",
             selected.pid.as_u32()
         );
-        println!("✅ Selected process correctly maintained after refresh");
+        println!("Selected process correctly maintained after refresh");
     } else {
-        println!("✅ Selected process was correctly cleared (process terminated)");
+        println!("Selected process was correctly cleared (process terminated)");
     }
 }
 
-// ========== Unit Test 17: Run Time Validation ==========
+// test 17: run time validation 
 #[test]
 fn test_runtime_non_negative() {
     let process = ProcessInfo::new(
