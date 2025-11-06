@@ -13,3 +13,15 @@ dirs = "5.0"
 tokio = { version = "1.48.0", features = ["time"] }
 log = "0.4"
 simplelog = "0.12"
+
+[lib]
+name = "tarner_monitor"
+path = "src/lib.rs"
+
+[[test]]
+name = "unit_tests"
+path = "tests/unit_tests.rs"
+
+[[test]]
+name = "integration_tests"
+path = "tests/integration_tests.rs"
