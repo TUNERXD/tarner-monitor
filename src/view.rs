@@ -1,6 +1,6 @@
 use crate::state::{Message, TarnerMonitor, AppTheme, Tab};
 use iced::widget::{button, column, container, row, scrollable, text, text_input, Column};
-use iced::{Element, Length, Theme};
+use iced::{Element, Length, Theme, Alignment};
 
 // TODO: Confirm when Kill process
 // TODO: Export Processes to CSV
@@ -50,7 +50,7 @@ pub fn view_processes<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a
         .padding(10);
 
     let end_task_button = button("End Task")
-        .on_press(Message::KillProcess)
+        .on_press(Message::RequestKill)
         .style(iced::theme::Button::Destructive);
 
     let sort_buttons = row![
@@ -83,16 +83,54 @@ pub fn view_processes<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a
     .spacing(10)
     .padding(10);
 
-    let details_pane: Element<'a, Message> = if let Some(process) = &state.selected_process {
-        // Calculate percentages using state totals
+    let details_pane: Element<'a, Message> = if state.kill_confirm {
+
+        if let Some(process) = &state.selected_process {
+            let parent_pid_str = process.parent_pid.map_or_else(
+                || "N/A".to_string(),
+                |pid| pid.as_u32().to_string()
+            );
+
+            let confirm_content = column![
+                text(format!("End parent process of '{}'?", process.name.to_string_lossy())).size(20),
+                text(format!("This will kill the parent (PID: {}) of the selected process (PID: {}).", parent_pid_str, process.pid.as_u32())),
+                row![
+                    button("Yes, End Task")
+                        .on_press(Message::ConfirmKill)
+                        .style(iced::theme::Button::Destructive),
+                    button("Cancel")
+                        .on_press(Message::CancelKill)
+                        .style(iced::theme::Button::Secondary)
+                ].spacing(10)
+            ]
+            .spacing(10)
+            .padding(10)
+            .width(Length::Fill)
+            .align_items(Alignment::Center);
+
+            container(confirm_content)
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .center_x()
+                .center_y()
+                .into()
+        } else {
+            let error_content = column![
+                text("Error: No process selected for kill confirmation."),
+                button("Cancel").on_press(Message::CancelKill)
+            ].align_items(Alignment::Center);
+            container(error_content).center_x().center_y().into()
+        }
+
+    } else if let Some(process) = &state.selected_process {
+
         let cpu_percent = process.cpu_usage / state.system_manager.cpu_cores as f32;
         let mem_percent = (process.memory_usage as f64 / state.system_manager.total_memory as f64) * 100.0;
         let parent_pid_str = process.parent_pid.map_or_else(
-            || "N/A".to_string(), // Handle processes with no parent
+            || "N/A".to_string(),
             |pid| pid.as_u32().to_string()
         );
 
-        // Helper closure to create a detail row
         let detail_row = |label: &str, value: String| {
             row![
                 text(label).width(Length::FillPortion(1)),
@@ -101,8 +139,7 @@ pub fn view_processes<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a
             .spacing(10)
             .padding(2)
         };
-
-        // Build the column with process details
+        
         let details_column = column![
             text("Process Details").size(20),
             row![
@@ -140,6 +177,7 @@ pub fn view_processes<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a
 
         details_column.into()
     } else {
+        // --- 3. RENDER NOTHING (Your existing code) ---
         text("").into()
     };
 

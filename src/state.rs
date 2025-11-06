@@ -101,14 +101,16 @@ pub enum Tab {
 #[derive(Debug, Clone)]
 pub enum Message {
     ProcessSelected(Pid),     
-    SearchChanged(String),     
-    KillProcess,        
+    SearchChanged(String),           
     SortAlpha,
     SortCpu,
     SortMem,
     RefreshTick(time::Instant),
     ToggleTheme,
     TabSelected(Tab),
+    RequestKill,
+    ConfirmKill,
+    CancelKill,
 }
 pub struct TarnerMonitor {
     pub processes: Vec<ProcessInfo>,
@@ -117,7 +119,8 @@ pub struct TarnerMonitor {
     pub system_manager: SystemManager,
     current_sort: SortBy,
     pub theme: AppTheme,
-    pub active_tab: Tab
+    pub active_tab: Tab,
+    pub kill_confirm: bool,
 }
 
 impl TarnerMonitor {
@@ -134,6 +137,7 @@ impl TarnerMonitor {
             current_sort: SortBy::AlphaAsc,
             theme: settings.theme,
             active_tab: Tab::Processes,
+            kill_confirm: false,
         };  
 
         app.apply_sort(); 
@@ -260,13 +264,24 @@ impl Application for TarnerMonitor {
                 self.selected_process = self.processes
                     .iter()
                     .find(|p| p.pid == pid)
-                    .cloned()
+                    .cloned();
+                self.kill_confirm = false;
             },
             Message::SearchChanged(search) => {
                 self.search_str = search;
             },
-            Message::KillProcess => {
+            Message::RequestKill => {
+                if self.selected_process.is_some() {
+                    self.kill_confirm = true;
+                }
+            },
+            Message::ConfirmKill => {
                 self.kill_selected_parent();
+                self.kill_confirm = false;
+                self.selected_process = None;
+            },
+            Message::CancelKill => {
+                self.kill_confirm = false;
             },
             Message::SortAlpha => {
                 if self.current_sort == SortBy::AlphaAsc {
