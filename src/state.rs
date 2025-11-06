@@ -133,7 +133,7 @@ pub struct TarnerMonitor {
     pub selected_process: Option<ProcessInfo>,
     pub search_str: String,  
     pub system_manager: SystemManager,
-    current_sort: SortBy,
+    pub current_sort: SortBy,
     pub theme: AppTheme,
     pub active_tab: Tab,
     pub kill_confirm: bool,
@@ -197,7 +197,7 @@ impl TarnerMonitor {
     }
 
     // Sorting Processes
-    fn apply_sort(&mut self) {
+    pub fn apply_sort(&mut self) {
         match self.current_sort {
             SortBy::AlphaAsc => {
                 self.processes.sort_by(|a, b| a.name.cmp(&b.name));
