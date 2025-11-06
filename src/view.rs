@@ -1,8 +1,7 @@
-use crate::state::{Message, TarnerMonitor, AppTheme, Tab};
+use crate::state::{Message, TarnerMonitor, AppTheme, Tab, ToastType};
 use iced::widget::{button, column, container, row, scrollable, text, text_input, Column};
 use iced::{Element, Length, Theme, Alignment};
 
-// TODO: Export Processes to CSV
 // TODO: Logs
 
 pub fn view<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a, Message> {
@@ -44,27 +43,26 @@ pub fn view<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a, Message>
     ]
     .spacing(10);
 
-    let toast = if let Some(status) = &state.export_status {
-        let style = if status.starts_with("Error") {
-            iced::theme::Container::Transparent
-        } else {
-            iced::theme::Container::Transparent
+    let toast = if let Some((status, toast_type)) = &state.toast {
+        // Use the toast_type to set the style
+        let style = match toast_type {
+            ToastType::Success => iced::theme::Container::Transparent,
+            ToastType::Error => iced::theme::Container::Transparent,
         };
 
         let toast_content = container(
             text(status)
         )
         .padding(10)
-        .style(style);
+        .style(style); // This gives it a green (Success) or red (Destructive) background
 
         container(toast_content)
             .width(Length::Fill)
             .height(Length::Shrink)
             .align_x(iced::alignment::Horizontal::Center)
             .padding(5)
-    
+
     } else {
-        // Return an empty container if there's no message
         container(text("")).height(Length::Shrink)
     };
 

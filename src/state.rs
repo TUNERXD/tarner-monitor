@@ -99,6 +99,12 @@ pub enum Tab {
     Settings,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ToastType {
+    Success,
+    Error,
+}
+
 #[derive(Debug, Clone)]
 pub enum Message {
     ProcessSelected(Pid),     
@@ -114,7 +120,7 @@ pub enum Message {
     CancelKill,
     ExportToCsv,
     ExportFinished(Result<String, String>),
-    HideExportToast,
+    HideToast,
 }
 pub struct TarnerMonitor {
     pub processes: Vec<ProcessInfo>,
@@ -125,7 +131,7 @@ pub struct TarnerMonitor {
     pub theme: AppTheme,
     pub active_tab: Tab,
     pub kill_confirm: bool,
-    pub export_status: Option<String>,
+    pub toast: Option<(String, ToastType)>,
 }
 
 impl TarnerMonitor {
@@ -143,7 +149,7 @@ impl TarnerMonitor {
             theme: settings.theme,
             active_tab: Tab::Processes,
             kill_confirm: false,
-            export_status: None,
+            toast: None,
         };  
 
         app.apply_sort(); 
@@ -215,28 +221,21 @@ impl TarnerMonitor {
     }
 
     // Kill the parent of the instance
-    pub fn kill_selected_parent(&mut self) -> bool {
-
-        let target_pid = self.selected_process.as_ref().map(|p| p.pid);
-
-        if let Some(pid) = target_pid {
-            // get parent pid
-            if let Some(process) = self.system_manager.system.process(pid) {
-                if let Some(parent_pid) = process.parent() {
-                    let success = self.system_manager.kill_process(parent_pid);
-                    if success {
-                        self.selected_process = None;
-                    }
-                    self.refresh_processes();
-                    self.apply_sort();
-                    return success;
+    pub fn kill_selected_parent(&mut self) -> (bool, String) {
+        let target_process = self.selected_process.as_ref();
+        
+        if let Some(process) = target_process {
+            let name = process.name.to_string_lossy().to_string();
+            // Check if there is a parent PID
+            if let Some(parent_pid) = process.parent_pid {
+                // Attempt to kill the parent
+                if self.system_manager.kill_process(parent_pid) {
+                    return (true, name);
                 }
             }
+            return (false, name);
         }
-
-        self.refresh_processes();
-        self.apply_sort();
-        false
+        (false, "".to_string())
     }
 
     pub fn run_with_settings() -> iced::Result {
@@ -336,9 +335,22 @@ impl Application for TarnerMonitor {
                 }
             },
             Message::ConfirmKill => {
-                self.kill_selected_parent();
+                let (success, name) = self.kill_selected_parent();
                 self.kill_confirm = false;
                 self.selected_process = None;
+
+                let (msg, style) = if success {
+                    (format!("Successfully killed parent of {}", name), ToastType::Success)
+                } else {
+                    (format!("Failed to kill parent of {}", name), ToastType::Error)
+                };
+                
+                self.toast = Some((msg, style));
+                
+                return Command::perform(
+                    async { tokio::time::sleep(Duration::from_secs(3)).await },
+                    |_| Message::HideToast,
+                );
             },
             Message::CancelKill => {
                 self.kill_confirm = false;
@@ -383,9 +395,8 @@ impl Application for TarnerMonitor {
                 self.active_tab = tab;
             },
             Message::ExportToCsv => {
-                self.export_status = Some("Exporting...".to_string());
+                self.toast = Some(("Exporting...".to_string(), ToastType::Success));
                 
-                // Get the *currently displayed* processes to export
                 let processes_to_export: Vec<ProcessInfo> = self.get_filtered()
                     .into_iter()
                     .cloned()
@@ -394,7 +405,6 @@ impl Application for TarnerMonitor {
                 let cpu_cores = self.system_manager.cpu_cores;
                 let total_memory = self.system_manager.total_memory;
 
-                // Return a command to run our async function
                 return Command::perform(
                     export_action(processes_to_export, cpu_cores, total_memory), 
                     Message::ExportFinished
@@ -402,17 +412,17 @@ impl Application for TarnerMonitor {
             },
             Message::ExportFinished(result) => {
                 match result {
-                    Ok(success_message) => self.export_status = Some(success_message),
-                    Err(error_message) => self.export_status = Some(format!("Error: {}", error_message)),
+                    Ok(success_message) => self.toast = Some((success_message, ToastType::Success)),
+                    Err(error_message) => self.toast = Some((format!("Error: {}", error_message), ToastType::Error)),
                 }
-
                 return Command::perform(
                     async { tokio::time::sleep(Duration::from_secs(3)).await },
-                    |_| Message::HideExportToast,
+                    |_| Message::HideToast,
                 );
-            }
-            Message::HideExportToast => {
-                self.export_status = None;
+            },
+            
+            Message::HideToast => {
+                self.toast = None;
             }
         }
         Command::none()
