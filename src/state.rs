@@ -96,6 +96,7 @@ pub enum SortBy {
 pub enum Tab {
     Processes,
     System,
+    Settings,
 }
 
 #[derive(Debug, Clone)]
@@ -111,6 +112,9 @@ pub enum Message {
     RequestKill,
     ConfirmKill,
     CancelKill,
+    ExportToCsv,
+    ExportFinished(Result<String, String>),
+    HideToast,
 }
 pub struct TarnerMonitor {
     pub processes: Vec<ProcessInfo>,
@@ -121,6 +125,8 @@ pub struct TarnerMonitor {
     pub theme: AppTheme,
     pub active_tab: Tab,
     pub kill_confirm: bool,
+    pub toast: Option<String>,
+    pub logs: Vec<String>,
 }
 
 impl TarnerMonitor {
@@ -128,6 +134,9 @@ impl TarnerMonitor {
         let settings = AppSettings::load();
         let system_manager = SystemManager::new();
         let processes = system_manager.get_processes();
+
+        let mut logs = Vec::new();
+        logs.push("Application started".to_string());
 
         let mut app = TarnerMonitor {
             processes,
@@ -138,10 +147,19 @@ impl TarnerMonitor {
             theme: settings.theme,
             active_tab: Tab::Processes,
             kill_confirm: false,
+            toast: None,
+            logs,
         };  
 
         app.apply_sort(); 
         app
+    }
+
+    fn push_log(&mut self, message: String) {
+        self.logs.push(message);
+        if self.logs.len() > 100 {
+            self.logs.remove(0);
+        }
     }
 
     // For searching processes
@@ -209,34 +227,80 @@ impl TarnerMonitor {
     }
 
     // Kill the parent of the instance
-    pub fn kill_selected_parent(&mut self) -> bool {
-
-        let target_pid = self.selected_process.as_ref().map(|p| p.pid);
-
-        if let Some(pid) = target_pid {
-            // get parent pid
-            if let Some(process) = self.system_manager.system.process(pid) {
-                if let Some(parent_pid) = process.parent() {
-                    let success = self.system_manager.kill_process(parent_pid);
-                    if success {
-                        self.selected_process = None;
-                    }
-                    self.refresh_processes();
-                    self.apply_sort();
-                    return success;
+    pub fn kill_selected_parent(&mut self) -> (bool, String) {
+        let target_process = self.selected_process.as_ref();
+        
+        if let Some(process) = target_process {
+            let name = process.name.to_string_lossy().to_string();
+            // Check if there is a parent PID
+            if let Some(parent_pid) = process.parent_pid {
+                // Attempt to kill the parent
+                if self.system_manager.kill_process(parent_pid) {
+                    return (true, name);
                 }
             }
+            return (false, name);
         }
-
-        self.refresh_processes();
-        self.apply_sort();
-        false
+        (false, "".to_string())
     }
 
     pub fn run_with_settings() -> iced::Result {
         let settings = iced::Settings::with_flags(());
         TarnerMonitor::run(settings)
     }
+}
+
+async fn export_action(
+    processes: Vec<ProcessInfo>, 
+    cpu_cores: usize, 
+    total_memory: u64
+) -> Result<String, String> {
+    
+    let Some(mut path) = dirs::download_dir() else {
+        return Err("Could not find download directory.".to_string());
+    };
+    path.push("tarner_monitor_export.csv");
+    let file_path_str = path.to_string_lossy().to_string();
+
+    let mut writer = match csv::Writer::from_path(&path) {
+        Ok(w) => w,
+        Err(e) => return Err(format!("Failed to create file: {}", e)),
+    };
+
+    writer.write_record([
+        "PID",
+        "Name",
+        "Parent PID",
+        "Status",
+        "CPU %",
+        "Memory %",
+        "Memory (bytes)",
+        "Disk Read (bytes)",
+        "Disk Write (bytes)",
+        "Runtime (sec)",
+    ]).map_err(|e| format!("Failed to write header: {}", e))?;
+
+    for p in processes {
+        let cpu_percent = p.cpu_usage / cpu_cores as f32;
+        let mem_percent = (p.memory_usage as f64 / total_memory as f64) * 100.0;
+        let parent_pid = p.parent_pid.map_or_else(|| "N/A".to_string(), |pid| pid.as_u32().to_string());
+        
+        writer.write_record([
+            p.pid.as_u32().to_string(),
+            p.name.to_string_lossy().to_string(),
+            parent_pid,
+            format!("{}", p.status),
+            format!("{:.2}", cpu_percent),
+            format!("{:.2}", mem_percent),
+            p.memory_usage.to_string(),
+            p.disk_usage.read_bytes.to_string(),
+            p.disk_usage.written_bytes.to_string(),
+            p.run_time.to_string(),
+        ]).map_err(|e| format!("Failed to write record: {}", e))?;
+    }
+
+    writer.flush().map_err(|e| format!("Failed to flush CSV: {}", e))?;
+    Ok(format!("Export successful to {}", file_path_str))
 }
 
 impl Application for TarnerMonitor {
@@ -259,51 +323,79 @@ impl Application for TarnerMonitor {
     }
 
     fn update(&mut self, message: Message) -> Command<Message> {
+
         match message {
             Message::ProcessSelected(pid) => {
                 self.selected_process = self.processes
                     .iter()
                     .find(|p| p.pid == pid)
                     .cloned();
+                if self.selected_process.is_some() {
+                    self.push_log(format!("selected {:?}", self.selected_process.as_ref().unwrap().name));
+                }
                 self.kill_confirm = false;
+                
             },
             Message::SearchChanged(search) => {
                 self.search_str = search;
+                self.push_log(format!("Filter for {}", self.search_str));
             },
             Message::RequestKill => {
                 if self.selected_process.is_some() {
                     self.kill_confirm = true;
+                    self.push_log(format!("Requested Kill {:?}", self.selected_process.as_ref().unwrap().name));
                 }
             },
             Message::ConfirmKill => {
-                self.kill_selected_parent();
+                let (success, name) = self.kill_selected_parent();
                 self.kill_confirm = false;
                 self.selected_process = None;
+
+                let msg = if success {
+                    format!("Successfully killed parent of {}", name)
+                } else {
+                    format!("Failed to kill parent of {}", name)
+                };
+                
+                self.toast = Some(msg.clone());
+                self.push_log(msg);
+                
+                return Command::perform(
+                    async { tokio::time::sleep(Duration::from_secs(3)).await },
+                    |_| Message::HideToast,
+                );
             },
             Message::CancelKill => {
                 self.kill_confirm = false;
+                self.push_log(String::from("Kill Canceled"));
             },
             Message::SortAlpha => {
                 if self.current_sort == SortBy::AlphaAsc {
                     self.current_sort = SortBy::AlphaDesc;
+                    self.push_log(String::from("Sort Alphabet Descending"));
                 } else {
                     self.current_sort = SortBy::AlphaAsc;
+                    self.push_log(String::from("Sort Alphabet Ascending"));
                 }
                 self.apply_sort();
             },
             Message::SortCpu => {
                 if self.current_sort == SortBy::CpuAsc {
                     self.current_sort = SortBy::CpuDesc;
+                    self.push_log(String::from("Sort Cpu Descending"));
                 } else {
                     self.current_sort = SortBy::CpuAsc;
+                    self.push_log(String::from("Sort Cpu Ascending"));
                 }
                 self.apply_sort();
             },
             Message::SortMem => {
                 if self.current_sort == SortBy::MemAsc {
                     self.current_sort = SortBy::MemDesc;
+                    self.push_log(String::from("Sort Memory Descending"));
                 } else {
                     self.current_sort = SortBy::MemAsc;
+                    self.push_log(String::from("Sort Memory Ascending"));
                 }
                 self.apply_sort();
             },
@@ -313,15 +405,61 @@ impl Application for TarnerMonitor {
             },
             Message::ToggleTheme => {
                 self.theme = match self.theme {
-                    AppTheme::Light => AppTheme::Dark,
-                    AppTheme::Dark => AppTheme::Light,
+                    AppTheme::Light => {
+                        self.push_log(String::from("Change to Dark Theme"));
+                        AppTheme::Dark
+                    },
+                    AppTheme::Dark => {
+                        self.push_log(String::from("Change to Light Theme"));
+                        AppTheme::Light
+                    },
                 };
                 let settings = AppSettings { theme: self.theme };
+                self.push_log(String::from("Theme Saved"));
                 settings.save();
             },
             Message::TabSelected(tab) => {
                 self.active_tab = tab;
+                self.push_log(String::from("Changed Tab"));
+                
             },
+            Message::ExportToCsv => {
+                self.toast = Some("Exporting...".to_string());
+                
+                let processes_to_export: Vec<ProcessInfo> = self.get_filtered()
+                    .into_iter()
+                    .cloned()
+                    .collect();
+                
+                let cpu_cores = self.system_manager.cpu_cores;
+                let total_memory = self.system_manager.total_memory;
+                
+                return Command::perform(
+                    export_action(processes_to_export, cpu_cores, total_memory), 
+                    Message::ExportFinished
+                );
+            },
+            Message::ExportFinished(result) => {
+                match result {
+                    Ok(success_message) => {
+                        self.push_log(String::from("Export Success"));
+                        self.toast = Some(success_message)
+                    },
+                    Err(error_message) => {
+                        self.push_log(String::from("Export Failed"));
+                        self.toast = Some(format!("Error: {}", error_message));
+                    },
+                }
+                return Command::perform(
+                    async { tokio::time::sleep(Duration::from_secs(3)).await },
+                    |_| Message::HideToast,
+                );
+            },
+            
+            Message::HideToast => {
+                self.toast = None;
+                self.push_log(String::from("Toast Hidden"));
+            }
         }
         Command::none()
     }
