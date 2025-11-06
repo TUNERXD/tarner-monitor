@@ -3,6 +3,7 @@ use iced::widget::{button, column, container, row, scrollable, text, text_input,
 use iced::{Element, Length, Theme, Alignment};
 
 // TODO: Export Processes to CSV
+// TODO: Logs
 
 pub fn view<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a, Message> {
     let tab_buttons = row![
@@ -19,14 +20,22 @@ pub fn view<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a, Message>
                 iced::theme::Button::Primary
             } else {
                 iced::theme::Button::Secondary
+            }),
+        button("Settings")
+            .on_press(Message::TabSelected(Tab::Settings))
+            .style(if state.active_tab == Tab::Settings {
+                iced::theme::Button::Primary
+            } else {
+                iced::theme::Button::Secondary
             })
     ]
     .spacing(5);
 
     // Choose content based on the active tab
     let tab_content = match state.active_tab {
-        Tab::Processes => view_processes(state, _theme),
+        Tab::Processes => view_processes(state),
         Tab::System => view_system(state),
+        Tab::Settings => view_settings(state, _theme),
     };
 
     // Combine tabs and content
@@ -43,7 +52,7 @@ pub fn view<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a, Message>
         .into()
 }
 
-pub fn view_processes<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a, Message> {
+pub fn view_processes<'a>(state: &'a TarnerMonitor) -> Element<'a, Message> {
     let search_input = text_input("Search processes...", &state.search_str)
         .on_input(Message::SearchChanged)
         .padding(10);
@@ -59,17 +68,8 @@ pub fn view_processes<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a
     ]
     .spacing(5);
 
-    let theme_text = match state.theme {
-        AppTheme::Light => "Dark Mode",
-        AppTheme::Dark => "Light Mode",
-    };
 
-    let theme_toggle = button(theme_text)
-        .on_press(Message::ToggleTheme)
-        .style(iced::theme::Button::Secondary);
-
-
-    let controls = row![search_input, end_task_button, sort_buttons, theme_toggle]
+    let controls = row![search_input, end_task_button, sort_buttons]
         .spacing(10)
         .padding(10);
 
@@ -268,5 +268,30 @@ fn view_system<'a>(state: &'a TarnerMonitor) -> Element<'a, Message> {
     .padding(10);
 
     // Return as a scrollable container
+    scrollable(content).height(Length::Fill).into()
+}
+
+fn view_settings<'a>(state: &'a TarnerMonitor, _theme: Theme) -> Element<'a, Message> {
+
+    let theme_text = match state.theme {
+        AppTheme::Light => "Dark Mode",
+        AppTheme::Dark => "Light Mode",
+    };
+
+    let theme_toggle = button(theme_text)
+        .on_press(Message::ToggleTheme)
+        .style(iced::theme::Button::Secondary);
+
+    let export_csv = button("Export to CSV")
+        .on_press(Message::ToggleTheme)
+        .style(iced::theme::Button::Secondary);
+
+    let content = column! [
+        theme_toggle,
+        export_csv
+    ]
+    .spacing(10)
+    .padding(10);
+
     scrollable(content).height(Length::Fill).into()
 }

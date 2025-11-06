@@ -96,6 +96,7 @@ pub enum SortBy {
 pub enum Tab {
     Processes,
     System,
+    Settings,
 }
 
 #[derive(Debug, Clone)]
