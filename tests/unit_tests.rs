@@ -18,7 +18,6 @@ fn test_process_info_creation() {
         1000,
         DiskUsage::default(),
     );
-
     assert_eq!(process.name, OsString::from("test_process"));
     assert_eq!(process.pid, Pid::from_u32(200));
     assert_eq!(process.parent_pid, Some(Pid::from_u32(100)));
@@ -41,7 +40,6 @@ fn test_process_name_not_empty() {
         500,
         DiskUsage::default(),
     );
-
     assert!(!process.name.is_empty());
     assert_eq!(process.name.to_string_lossy(), "chrome");
 }
@@ -60,7 +58,6 @@ fn test_process_pid_positive() {
         1000,
         DiskUsage::default(),
     );
-
     assert!(process.pid.as_u32() > 0);
     assert_eq!(process.pid.as_u32(), 5678);
 }
@@ -79,7 +76,6 @@ fn test_cpu_usage_within_bounds() {
         100,
         DiskUsage::default(),
     );
-
     assert!(process.cpu_usage >= 0.0);
     assert!(process.cpu_usage <= 100.0);
 }
@@ -98,7 +94,6 @@ fn test_memory_usage_non_negative() {
         100,
         DiskUsage::default(),
     );
-
     assert!(process.memory_usage >= 0);
 }
 
@@ -106,7 +101,6 @@ fn test_memory_usage_non_negative() {
 #[test]
 fn test_system_manager_initialization() {
     let system_manager = SystemManager::new();
-
     assert!(system_manager.cpu_cores > 0);
     assert!(system_manager.total_memory > 0);
     assert!(!system_manager.os_name.is_empty());
@@ -117,7 +111,6 @@ fn test_system_manager_initialization() {
 #[test]
 fn test_cpu_core_count_realistic() {
     let system_manager = SystemManager::new();
-
     assert!(
         system_manager.cpu_cores >= 1 && system_manager.cpu_cores <= 256,
         "Unrealistic CPU count: {}",
@@ -129,7 +122,6 @@ fn test_cpu_core_count_realistic() {
 #[test]
 fn test_total_memory_validation() {
     let system_manager = SystemManager::new();
-    
     // at least 1 GB
     assert!(
         system_manager.total_memory >= 1_073_741_824,
@@ -143,9 +135,7 @@ fn test_total_memory_validation() {
 fn test_process_filtering_empty_search() {
     let mut monitor = TarnerMonitor::new();
     monitor.search_str = String::new();
-    
     let filtered = monitor.get_filtered();
-    
     // if empty, should return all processes
     assert_eq!(filtered.len(), monitor.processes.len());
 }
@@ -154,7 +144,6 @@ fn test_process_filtering_empty_search() {
 #[test]
 fn test_process_filtering_with_search() {
     let mut monitor = TarnerMonitor::new();
-    
     // add test processes
     monitor.processes = vec![
         ProcessInfo::new(
@@ -191,11 +180,9 @@ fn test_process_filtering_with_search() {
             DiskUsage::default(),
         ),
     ];
-    
     // search for "chrome"
     monitor.search_str = String::from("chrome");
     let filtered = monitor.get_filtered();
-    
     assert_eq!(filtered.len(), 1);
     assert_eq!(filtered[0].name.to_string_lossy(), "chrome");
 }
@@ -204,7 +191,6 @@ fn test_process_filtering_with_search() {
 #[test]
 fn test_case_insensitive_search() {
     let mut monitor = TarnerMonitor::new();
-    
     monitor.processes = vec![
         ProcessInfo::new(
             OsString::from("Chrome"),
@@ -218,11 +204,9 @@ fn test_case_insensitive_search() {
             DiskUsage::default(),
         ),
     ];
-    
     // search with lowercase should find uppercase
     monitor.search_str = String::from("chrome");
     let filtered = monitor.get_filtered();
-    
     assert_eq!(filtered.len(), 1);
 }
 
@@ -230,7 +214,6 @@ fn test_case_insensitive_search() {
 #[test]
 fn test_sort_alphabetically_ascending() {
     let mut monitor = TarnerMonitor::new();
-    
     monitor.processes = vec![
         ProcessInfo::new(
             OsString::from("zebra"),
@@ -266,10 +249,8 @@ fn test_sort_alphabetically_ascending() {
             DiskUsage::default(),
         ),
     ];
-    
     monitor.current_sort = SortBy::AlphaAsc;
     monitor.apply_sort();
-    
     assert_eq!(monitor.processes[0].name.to_string_lossy(), "apple");
     assert_eq!(monitor.processes[1].name.to_string_lossy(), "middle");
     assert_eq!(monitor.processes[2].name.to_string_lossy(), "zebra");
@@ -279,7 +260,6 @@ fn test_sort_alphabetically_ascending() {
 #[test]
 fn test_sort_by_cpu_descending() {
     let mut monitor = TarnerMonitor::new();
-    
     monitor.processes = vec![
         ProcessInfo::new(
             OsString::from("low"),
@@ -315,10 +295,8 @@ fn test_sort_by_cpu_descending() {
             DiskUsage::default(),
         ),
     ];
-    
     monitor.current_sort = SortBy::CpuDesc;
     monitor.apply_sort();
-    
     assert_eq!(monitor.processes[0].cpu_usage, 50.0);
     assert_eq!(monitor.processes[1].cpu_usage, 25.0);
     assert_eq!(monitor.processes[2].cpu_usage, 10.0);
@@ -328,7 +306,6 @@ fn test_sort_by_cpu_descending() {
 #[test]
 fn test_sort_by_memory_descending() {
     let mut monitor = TarnerMonitor::new();
-    
     monitor.processes = vec![
         ProcessInfo::new(
             OsString::from("low"),
@@ -364,10 +341,8 @@ fn test_sort_by_memory_descending() {
             DiskUsage::default(),
         ),
     ];
-    
     monitor.current_sort = SortBy::MemDesc;
     monitor.apply_sort();
-    
     assert_eq!(monitor.processes[0].memory_usage, 8192);
     assert_eq!(monitor.processes[1].memory_usage, 4096);
     assert_eq!(monitor.processes[2].memory_usage, 1024);
@@ -377,14 +352,12 @@ fn test_sort_by_memory_descending() {
 #[test]
 fn test_theme_toggle() {
     let mut monitor = TarnerMonitor::new();
-    
     let initial_theme = monitor.theme;
     
     monitor.theme = match monitor.theme {
         AppTheme::Light => AppTheme::Dark,
         AppTheme::Dark => AppTheme::Light,
     };
-    
     assert_ne!(monitor.theme, initial_theme);
 }
 
@@ -392,12 +365,9 @@ fn test_theme_toggle() {
 #[test]
 fn test_tab_selection() {
     let mut monitor = TarnerMonitor::new();
-    
     assert_eq!(monitor.active_tab, Tab::Processes);
-    
     monitor.active_tab = Tab::System;
     assert_eq!(monitor.active_tab, Tab::System);
-    
     monitor.active_tab = Tab::Settings;
     assert_eq!(monitor.active_tab, Tab::Settings);
 }
@@ -408,15 +378,12 @@ fn test_tab_selection() {
 fn test_process_selection_persistence_after_refresh() {
     let mut monitor = TarnerMonitor::new();
     monitor.refresh_processes();
-    
     if monitor.processes.is_empty() {
         println!("⚠️  No processes available for test");
         return;
     }
-
     let first_process = monitor.processes[0].clone();
     monitor.selected_process = Some(first_process.clone());
-    
     println!("Selected process: {:?} (PID: {})", 
              first_process.name.to_string_lossy(), 
              first_process.pid.as_u32());
@@ -427,12 +394,10 @@ fn test_process_selection_persistence_after_refresh() {
                  i, 
                  monitor.selected_process.as_ref().map(|p| p.pid.as_u32()));
     }
-    
     // BEFORE FIX: selected_process might become stale or point to wrong process
     // AFTER FIX: selected_process should either:
     //   1. exist with updated data if process is still running
     //   2. none if process was terminated
-    
     if let Some(selected) = &monitor.selected_process {
         let exists = monitor.processes.iter().any(|p| p.pid == selected.pid);
         assert!(
@@ -460,7 +425,6 @@ fn test_runtime_non_negative() {
         100,
         DiskUsage::default(),
     );
-
     assert!(process.run_time >= 0);
     assert_eq!(process.run_time, 3600);
 }
