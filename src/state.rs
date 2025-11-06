@@ -92,6 +92,12 @@ pub enum SortBy {
     MemDesc,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Tab {
+    Processes,
+    System,
+}
+
 #[derive(Debug, Clone)]
 pub enum Message {
     ProcessSelected(Pid),     
@@ -102,16 +108,16 @@ pub enum Message {
     SortMem,
     RefreshTick(time::Instant),
     ToggleTheme,
+    TabSelected(Tab),
 }
 pub struct TarnerMonitor {
     pub processes: Vec<ProcessInfo>,
     pub selected_process: Option<ProcessInfo>,
     pub search_str: String,  
-    pub total_memory: u64,
-    pub cpu_len: usize,
-    system_manager: SystemManager,
+    pub system_manager: SystemManager,
     current_sort: SortBy,
     pub theme: AppTheme,
+    pub active_tab: Tab
 }
 
 impl TarnerMonitor {
@@ -124,11 +130,10 @@ impl TarnerMonitor {
             processes,
             selected_process: None,
             search_str: String::new(),
-            total_memory: system_manager.total_memory(),
-            cpu_len: system_manager.cpu_count(),
             system_manager,
             current_sort: SortBy::AlphaAsc,
             theme: settings.theme,
+            active_tab: Tab::Processes,
         };  
 
         app.apply_sort(); 
@@ -155,8 +160,6 @@ impl TarnerMonitor {
     pub fn refresh_processes(&mut self) {
         self.system_manager.refresh();
         self.processes = self.system_manager.get_processes();
-        self.cpu_len = self.system_manager.cpu_count();
-        self.total_memory = self.system_manager.total_memory();
 
         if let Some(selected_proc) = &self.selected_process {
             let pid = selected_proc.pid;
@@ -300,7 +303,10 @@ impl Application for TarnerMonitor {
                 };
                 let settings = AppSettings { theme: self.theme };
                 settings.save();
-            }
+            },
+            Message::TabSelected(tab) => {
+                self.active_tab = tab;
+            },
         }
         Command::none()
     }

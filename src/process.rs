@@ -1,4 +1,6 @@
 use sysinfo::Pid;
+use sysinfo::ProcessStatus;
+use sysinfo::DiskUsage;
 use std::ffi::OsString;
 
 #[derive(Clone, Debug)]
@@ -8,6 +10,10 @@ pub struct ProcessInfo {
     pub pid: Pid,
     pub cpu_usage: f32,
     pub memory_usage: u64,
+    pub run_time: u64,
+    pub status: ProcessStatus,
+    pub acc_cpu_time: u64,
+    pub disk_usage: DiskUsage,
 }
 
 impl ProcessInfo {
@@ -17,6 +23,10 @@ impl ProcessInfo {
         pid: Pid,
         cpu_usage: f32,
         memory_usage: u64,
+        run_time: u64,
+        status: ProcessStatus,
+        acc_cpu_time: u64,
+        disk_usage: DiskUsage,
     ) -> Self {
         ProcessInfo {
             name,
@@ -24,6 +34,10 @@ impl ProcessInfo {
             pid,
             cpu_usage,
             memory_usage,
+            run_time,
+            status,
+            acc_cpu_time,
+            disk_usage,
         }
     }
 }
