@@ -54,33 +54,3 @@
 2.  Run the application:
     ```bash
     cargo run
-
----
-
-## Project Structure & Architecture
-tarner-monitor/
-├── Cargo.toml              # Dependencies and metadata
-├── Cargo.lock              # Locked dependency versions
-├── README.md              
-├── ARCHITECTURE.md         # Technical architecture documentation
-├── USER_GUIDE.md           # Detailed user guide
-├── TEST_PLAN.md            # Testing documentation
-├── src/
-│   ├── main.rs            # Application entry point
-│   ├── lib.rs             # Library exports
-│   ├── state.rs           # Application state and business logic
-│   ├── view.rs            # UI rendering
-│   ├── process.rs         # Process data model
-│   ├── system.rs          # System information wrapper
-│   └── logger.rs          # Logging configuration
-└── tests/
-    ├── unit_tests.rs      # Unit tests (17 tests)
-    └── integration_tests.rs # Integration tests (6 tests)
-
-### Core Dependencies
-* `iced` (0.13.1): The cross-platform GUI framework that handles the View layer.
-* `sysinfo` (0.32.1): Used for reliable cross-platform system and process information.
-* `tokio` (1.0): The asynchronous runtime powering `iced` and background updates.
-* `serde` (1.0) & `toml` (0.8): For configuration file handling and persistent settings.
-* `csv` (1.3): Enables the CSV export functionality.
-* `simplelog` (0.12) & `log` (0.4): Provides the logging infrastructure for events.
