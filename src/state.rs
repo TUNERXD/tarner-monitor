@@ -1,6 +1,7 @@
 use crate::process::ProcessInfo;
 use crate::system::SystemManager;
 use crate::logger;
+
 use iced::{Application, Command, Theme, time, Subscription, keyboard, event, Event};
 use std::time::Duration;
 use sysinfo::Pid;
@@ -9,7 +10,7 @@ use std::{fs, io};
 use std::path::PathBuf;
 use log::{info, warn, error};
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub enum AppTheme {
     Light,
     Dark,
