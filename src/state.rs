@@ -141,6 +141,12 @@ pub struct TarnerMonitor {
     pub log_lines: Vec<String>,
 }
 
+impl Default for TarnerMonitor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TarnerMonitor {
     pub fn new() -> Self {
         let settings = AppSettings::load();
@@ -503,24 +509,23 @@ impl Application for TarnerMonitor {
             },
             Message::EventOccurred(event) => {
                 // Filter for *only* the event we care about
-                if let Event::Keyboard(keyboard::Event::KeyPressed { key, .. }) = event {
-                    // Check if the key is 'Delete'
-                    match key {
-                        keyboard::Key::Named(keyboard::key::Named::Delete) => {
-                            // Check our app's state
-                            if self.active_tab == Tab::Processes
-                                && !self.kill_confirm
-                                && self.selected_process.is_some()
-                            {
-                                // Trigger the kill confirmation
-                                self.kill_confirm = true;
-                                warn!(
-                                    "Kill requested for: {:?}",
-                                    self.selected_process.as_ref().unwrap().name
-                                );
-                            }
-                        }
-                        _ => {}
+
+                if let Event::Keyboard(keyboard::Event::KeyPressed {
+                    key: keyboard::Key::Named(keyboard::key::Named::Delete),
+                    ..
+                }) = event
+                {
+                    // Check our app's state
+                    if self.active_tab == Tab::Processes
+                        && !self.kill_confirm
+                        && self.selected_process.is_some()
+                    {
+                        // Trigger the kill confirmation
+                        self.kill_confirm = true;
+                        warn!(
+                            "Kill requested for: {:?}",
+                            self.selected_process.as_ref().unwrap().name
+                        );
                     }
                 }
                 return Command::none();

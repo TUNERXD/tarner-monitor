@@ -12,6 +12,12 @@ pub struct SystemManager {
     pub total_memory: u64,
 }
 
+impl Default for SystemManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SystemManager {
     pub fn new() -> Self {
         let mut system = System::new_all();

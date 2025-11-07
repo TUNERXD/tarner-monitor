@@ -18,11 +18,11 @@ pub fn init_logging() -> Result<(), String> {
     };
 
     // Create the config directory if it doesn't exist
-    if let Some(dir) = log_path.parent() {
-        if !dir.exists() {
-            std::fs::create_dir_all(dir)
-                .map_err(|e| format!("Failed to create log directory: {}", e))?;
-        }
+    if let Some(dir) = log_path.parent()
+        && !dir.exists()
+    {
+        std::fs::create_dir_all(dir)
+            .map_err(|e| format!("Failed to create log directory: {}", e))?;
     }
 
     // Create log file
