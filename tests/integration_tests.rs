@@ -139,7 +139,6 @@ fn test_process_selection_and_details() {
     let selected = monitor.selected_process.as_ref().unwrap();
     assert!(selected.pid.as_u32() > 0);
     assert!(!selected.name.is_empty());
-    assert!(selected.memory_usage >= 0);
     println!("PID: {}", selected.pid.as_u32());
     println!("CPU: {:.2}%", selected.cpu_usage);
     println!("Memory: {} bytes", selected.memory_usage);

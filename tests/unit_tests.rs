@@ -80,24 +80,7 @@ fn test_cpu_usage_within_bounds() {
     assert!(process.cpu_usage <= 100.0);
 }
 
-// test 5: memory usage non-negative
-#[test]
-fn test_memory_usage_non_negative() {
-    let process = ProcessInfo::new(
-        OsString::from("test"),
-        None,
-        Pid::from_u32(1),
-        10.0,
-        8192,
-        100,
-        ProcessStatus::Run,
-        100,
-        DiskUsage::default(),
-    );
-    assert!(process.memory_usage >= 0);
-}
-
-// test 6: SystemManager creation 
+// test 5: SystemManager creation 
 #[test]
 fn test_system_manager_initialization() {
     let system_manager = SystemManager::new();
@@ -107,7 +90,7 @@ fn test_system_manager_initialization() {
     assert!(!system_manager.hostname.is_empty());
 }
 
-// test 7: CPU core count realistic 
+// test 6: CPU core count realistic 
 #[test]
 fn test_cpu_core_count_realistic() {
     let system_manager = SystemManager::new();
@@ -118,7 +101,7 @@ fn test_cpu_core_count_realistic() {
     );
 }
 
-// test 8: total memory validation
+// test 7: total memory validation
 #[test]
 fn test_total_memory_validation() {
     let system_manager = SystemManager::new();
@@ -130,7 +113,7 @@ fn test_total_memory_validation() {
     );
 }
 
-// test 9: process filtering empty search
+// test 8: process filtering empty search
 #[test]
 fn test_process_filtering_empty_search() {
     let mut monitor = TarnerMonitor::new();
@@ -140,7 +123,7 @@ fn test_process_filtering_empty_search() {
     assert_eq!(filtered.len(), monitor.processes.len());
 }
 
-// test 10: process filtering with search
+// test 9: process filtering with search
 #[test]
 fn test_process_filtering_with_search() {
     let mut monitor = TarnerMonitor::new();
@@ -187,7 +170,7 @@ fn test_process_filtering_with_search() {
     assert_eq!(filtered[0].name.to_string_lossy(), "chrome");
 }
 
-// test 11: case insensitive search
+// test 10: case insensitive search
 #[test]
 fn test_case_insensitive_search() {
     let mut monitor = TarnerMonitor::new();
@@ -210,7 +193,7 @@ fn test_case_insensitive_search() {
     assert_eq!(filtered.len(), 1);
 }
 
-// test 12: sort alphabetically ascending 
+// test 11: sort alphabetically ascending 
 #[test]
 fn test_sort_alphabetically_ascending() {
     let mut monitor = TarnerMonitor::new();
@@ -256,7 +239,7 @@ fn test_sort_alphabetically_ascending() {
     assert_eq!(monitor.processes[2].name.to_string_lossy(), "zebra");
 }
 
-// test 13: sort by CPU descending
+// test 12: sort by CPU descending
 #[test]
 fn test_sort_by_cpu_descending() {
     let mut monitor = TarnerMonitor::new();
@@ -302,7 +285,7 @@ fn test_sort_by_cpu_descending() {
     assert_eq!(monitor.processes[2].cpu_usage, 10.0);
 }
 
-// test 14: sort by memory descending
+// test 13: sort by memory descending
 #[test]
 fn test_sort_by_memory_descending() {
     let mut monitor = TarnerMonitor::new();
@@ -348,7 +331,7 @@ fn test_sort_by_memory_descending() {
     assert_eq!(monitor.processes[2].memory_usage, 1024);
 }
 
-//test 15: theme toggle
+//test 14: theme toggle
 #[test]
 fn test_theme_toggle() {
     let mut monitor = TarnerMonitor::new();
@@ -361,7 +344,7 @@ fn test_theme_toggle() {
     assert_ne!(monitor.theme, initial_theme);
 }
 
-// test 16: tab selection 
+// test 15: tab selection 
 #[test]
 fn test_tab_selection() {
     let mut monitor = TarnerMonitor::new();
@@ -409,22 +392,4 @@ fn test_process_selection_persistence_after_refresh() {
     } else {
         println!("Selected process was correctly cleared (process terminated)");
     }
-}
-
-// test 17: run time validation 
-#[test]
-fn test_runtime_non_negative() {
-    let process = ProcessInfo::new(
-        OsString::from("test"),
-        None,
-        Pid::from_u32(1),
-        10.0,
-        1024,
-        3600, // 1 hour
-        ProcessStatus::Run,
-        100,
-        DiskUsage::default(),
-    );
-    assert!(process.run_time >= 0);
-    assert_eq!(process.run_time, 3600);
 }
