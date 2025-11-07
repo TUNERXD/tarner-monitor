@@ -1,7 +1,7 @@
-use tarner_monitor::state::{TarnerMonitor, Tab};
-use tarner_monitor::system::SystemManager;
 use std::thread;
 use std::time::Duration;
+use tarner_monitor::state::{Tab, TarnerMonitor};
+use tarner_monitor::system::SystemManager;
 
 // test 1: complete monitoring cycle
 #[test]
@@ -53,8 +53,15 @@ fn test_process_search_and_filter() {
         let search_term = process_name.chars().take(3).collect::<String>();
         monitor.search_str = search_term.clone();
         let filtered = monitor.get_filtered();
-        println!("Searching for '{}': found {} processes", search_term, filtered.len());
-        assert!(filtered.len() > 0, "Search should find at least one process");
+        println!(
+            "Searching for '{}': found {} processes",
+            search_term,
+            filtered.len()
+        );
+        assert!(
+            filtered.len() > 0,
+            "Search should find at least one process"
+        );
         for process in filtered {
             let name_lower = process.name.to_string_lossy().to_lowercase();
             assert!(
@@ -114,7 +121,10 @@ fn test_sorting_functionality() {
         first_name,
         second_name
     );
-    println!("Alphabetical sorting works: '{}' <= '{}'", first_name, second_name);
+    println!(
+        "Alphabetical sorting works: '{}' <= '{}'",
+        first_name, second_name
+    );
     println!("Sorting functionality test passed!");
 }
 
@@ -129,13 +139,21 @@ fn test_process_selection_and_details() {
         return;
     }
     let first_pid = monitor.processes[0].pid;
-    monitor.selected_process = monitor.processes
+    monitor.selected_process = monitor
+        .processes
         .iter()
         .find(|p| p.pid == first_pid)
         .cloned();
     assert!(monitor.selected_process.is_some());
-    println!("Process selected: {:?}", 
-             monitor.selected_process.as_ref().unwrap().name.to_string_lossy());
+    println!(
+        "Process selected: {:?}",
+        monitor
+            .selected_process
+            .as_ref()
+            .unwrap()
+            .name
+            .to_string_lossy()
+    );
     let selected = monitor.selected_process.as_ref().unwrap();
     assert!(selected.pid.as_u32() > 0);
     assert!(!selected.name.is_empty());
@@ -150,11 +168,11 @@ fn test_process_selection_and_details() {
     } else {
         println!("Selection cleared (process may have ended)");
     }
-    
+
     println!("Process selection and details test passed!");
 }
 
-// test 5: tab navigation 
+// test 5: tab navigation
 #[test]
 fn test_tab_navigation() {
     println!("Testing tab navigation...");
@@ -197,7 +215,10 @@ fn test_system_information_retrieval() {
     let used_memory = system_manager.system.used_memory();
     assert!(used_memory > 0);
     assert!(used_memory <= system_manager.total_memory);
-    println!("Total Memory: {} MB", system_manager.total_memory / 1024 / 1024);
+    println!(
+        "Total Memory: {} MB",
+        system_manager.total_memory / 1024 / 1024
+    );
     println!("Used Memory: {} MB", used_memory / 1024 / 1024);
     println!("System information retrieval test passed!");
 }

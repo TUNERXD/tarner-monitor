@@ -1,7 +1,7 @@
+use std::ffi::OsString;
+use sysinfo::DiskUsage;
 use sysinfo::Pid;
 use sysinfo::ProcessStatus;
-use sysinfo::DiskUsage;
-use std::ffi::OsString;
 
 #[derive(Clone, Debug)]
 pub struct ProcessInfo {

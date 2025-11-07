@@ -1,8 +1,8 @@
-use tarner_monitor::process::ProcessInfo;
-use tarner_monitor::state::{TarnerMonitor, SortBy, AppTheme, Tab};
-use tarner_monitor::system::SystemManager;
-use sysinfo::{Pid, ProcessStatus, DiskUsage};
 use std::ffi::OsString;
+use sysinfo::{DiskUsage, Pid, ProcessStatus};
+use tarner_monitor::process::ProcessInfo;
+use tarner_monitor::state::{AppTheme, SortBy, Tab, TarnerMonitor};
+use tarner_monitor::system::SystemManager;
 
 // test 1: processInfo creation
 #[test]
@@ -62,7 +62,7 @@ fn test_process_pid_positive() {
     assert_eq!(process.pid.as_u32(), 5678);
 }
 
-// test 4: CPU usage bounds 
+// test 4: CPU usage bounds
 #[test]
 fn test_cpu_usage_within_bounds() {
     let process = ProcessInfo::new(
@@ -80,7 +80,7 @@ fn test_cpu_usage_within_bounds() {
     assert!(process.cpu_usage <= 100.0);
 }
 
-// test 5: SystemManager creation 
+// test 5: SystemManager creation
 #[test]
 fn test_system_manager_initialization() {
     let system_manager = SystemManager::new();
@@ -90,7 +90,7 @@ fn test_system_manager_initialization() {
     assert!(!system_manager.hostname.is_empty());
 }
 
-// test 6: CPU core count realistic 
+// test 6: CPU core count realistic
 #[test]
 fn test_cpu_core_count_realistic() {
     let system_manager = SystemManager::new();
@@ -174,26 +174,24 @@ fn test_process_filtering_with_search() {
 #[test]
 fn test_case_insensitive_search() {
     let mut monitor = TarnerMonitor::new();
-    monitor.processes = vec![
-        ProcessInfo::new(
-            OsString::from("Chrome"),
-            None,
-            Pid::from_u32(1),
-            10.0,
-            1024,
-            100,
-            ProcessStatus::Run,
-            100,
-            DiskUsage::default(),
-        ),
-    ];
+    monitor.processes = vec![ProcessInfo::new(
+        OsString::from("Chrome"),
+        None,
+        Pid::from_u32(1),
+        10.0,
+        1024,
+        100,
+        ProcessStatus::Run,
+        100,
+        DiskUsage::default(),
+    )];
     // search with lowercase should find uppercase
     monitor.search_str = String::from("chrome");
     let filtered = monitor.get_filtered();
     assert_eq!(filtered.len(), 1);
 }
 
-// test 11: sort alphabetically ascending 
+// test 11: sort alphabetically ascending
 #[test]
 fn test_sort_alphabetically_ascending() {
     let mut monitor = TarnerMonitor::new();
@@ -336,7 +334,7 @@ fn test_sort_by_memory_descending() {
 fn test_theme_toggle() {
     let mut monitor = TarnerMonitor::new();
     let initial_theme = monitor.theme;
-    
+
     monitor.theme = match monitor.theme {
         AppTheme::Light => AppTheme::Dark,
         AppTheme::Dark => AppTheme::Light,
@@ -344,7 +342,7 @@ fn test_theme_toggle() {
     assert_ne!(monitor.theme, initial_theme);
 }
 
-// test 15: tab selection 
+// test 15: tab selection
 #[test]
 fn test_tab_selection() {
     let mut monitor = TarnerMonitor::new();
@@ -354,7 +352,6 @@ fn test_tab_selection() {
     monitor.active_tab = Tab::Settings;
     assert_eq!(monitor.active_tab, Tab::Settings);
 }
-
 
 // bug fix test
 #[test]
@@ -367,15 +364,19 @@ fn test_process_selection_persistence_after_refresh() {
     }
     let first_process = monitor.processes[0].clone();
     monitor.selected_process = Some(first_process.clone());
-    println!("Selected process: {:?} (PID: {})", 
-             first_process.name.to_string_lossy(), 
-             first_process.pid.as_u32());
-    
+    println!(
+        "Selected process: {:?} (PID: {})",
+        first_process.name.to_string_lossy(),
+        first_process.pid.as_u32()
+    );
+
     for i in 1..=5 {
         monitor.refresh_processes();
-        println!("Refresh {}: Selected process is {:?}", 
-                 i, 
-                 monitor.selected_process.as_ref().map(|p| p.pid.as_u32()));
+        println!(
+            "Refresh {}: Selected process is {:?}",
+            i,
+            monitor.selected_process.as_ref().map(|p| p.pid.as_u32())
+        );
     }
     // BEFORE FIX: selected_process might become stale or point to wrong process
     // AFTER FIX: selected_process should either:

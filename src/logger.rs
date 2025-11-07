@@ -1,4 +1,6 @@
-use simplelog::{LevelFilter, WriteLogger, CombinedLogger, Config, TermLogger, TerminalMode, ColorChoice};
+use simplelog::{
+    ColorChoice, CombinedLogger, Config, LevelFilter, TermLogger, TerminalMode, WriteLogger,
+};
 use std::fs::File;
 use std::path::PathBuf;
 
@@ -37,11 +39,7 @@ pub fn init_logging() -> Result<(), String> {
             ColorChoice::Auto,
         ),
         // Log to the file
-        WriteLogger::new(
-            LevelFilter::Info,
-            Config::default(),
-            log_file,
-        ),
+        WriteLogger::new(LevelFilter::Info, Config::default(), log_file),
     ])
     .map_err(|e| format!("Failed to initialize logger: {}", e))
 }

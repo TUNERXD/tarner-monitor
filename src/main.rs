@@ -1,8 +1,8 @@
-mod state;
+mod logger;
 mod process;
+mod state;
 mod system;
 mod view;
-mod logger;
 use state::TarnerMonitor;
 
 fn main() -> iced::Result {
