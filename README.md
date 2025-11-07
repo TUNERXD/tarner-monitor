@@ -12,7 +12,7 @@
     * Memory usage
     * Disk I/O
     * Runtime duration
-**Terminate Processes:** Safely kill any selected process via a button or the $\text{\textlangle}\text{Delete}\text{\textrangle}$ key, complete with a confirmation dialog for safety.
+**Terminate Processes:** Safely kill any selected process via a button or the DELETE key, complete with a confirmation dialog for safety.
 
 ### Search, Filter & Sort
 **Real-time Search:** Instantly find processes by name.
